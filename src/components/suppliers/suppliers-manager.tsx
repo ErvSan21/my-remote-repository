@@ -28,13 +28,13 @@ export function SuppliersManager({
   listError,
 }: Props) {
   const [form, setForm] = useState(emptyForm);
+  const [showForm, setShowForm] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const visible = useMemo(
-    () =>
-      showInactive ? suppliers : suppliers.filter((s) => s.active),
+    () => (showInactive ? suppliers : suppliers.filter((s) => s.active)),
     [suppliers, showInactive],
   );
 
@@ -46,11 +46,13 @@ export function SuppliersManager({
       phone: s.phone || "",
       notes: s.notes || "",
     });
+    setShowForm(true);
     setFeedback(null);
   }
 
   function resetForm() {
     setForm(emptyForm);
+    setShowForm(false);
     setFeedback(null);
   }
 
@@ -82,71 +84,90 @@ export function SuppliersManager({
         <div>
           <h2 className="module-title">Proveedores</h2>
           <p className="module-desc">
-            Alta y edición. La deuda se calcula con compras con precio menos
-            pagos.
+            Nombre y departamento. La deuda se calcula con compras con precio
+            menos pagos.
           </p>
         </div>
+        {!showForm ? (
+          <button
+            type="button"
+            className="btn-primary header-cta"
+            onClick={() => {
+              setForm(emptyForm);
+              setShowForm(true);
+              setFeedback(null);
+            }}
+          >
+            Crear proveedor
+          </button>
+        ) : null}
       </header>
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
-      <form className="data-form" onSubmit={onSubmit}>
-        <h3 className="data-form-title">
-          {form.id ? "Editar proveedor" : "Nuevo proveedor"}
-        </h3>
-        <div className="field">
-          <label htmlFor="sup-name">Nombre</label>
-          <input
-            id="sup-name"
-            required
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            disabled={pending}
-          />
-        </div>
-        <div className="field-row">
+      {showForm ? (
+        <form className="data-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title">
+            {form.id ? "Editar proveedor" : "Crear proveedor"}
+          </h3>
           <div className="field">
-            <label htmlFor="sup-loc">Zona</label>
-            <select
-              id="sup-loc"
-              value={form.location}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, location: e.target.value }))
-              }
-              disabled={pending}
-            >
-              {SUPPLIER_LOCATIONS.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="sup-phone">Teléfono</label>
+            <label htmlFor="sup-name">Nombre</label>
             <input
-              id="sup-phone"
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              id="sup-name"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               disabled={pending}
             />
           </div>
-        </div>
-        <div className="field">
-          <label htmlFor="sup-notes">Notas</label>
-          <textarea
-            id="sup-notes"
-            rows={2}
-            value={form.notes}
-            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            disabled={pending}
-          />
-        </div>
-        <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={pending}>
-            {pending ? "Guardando…" : form.id ? "Guardar cambios" : "Crear"}
-          </button>
-          {form.id ? (
+          <div className="field-row">
+            <div className="field">
+              <label htmlFor="sup-loc">Departamento</label>
+              <select
+                id="sup-loc"
+                value={form.location}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, location: e.target.value }))
+                }
+                disabled={pending}
+              >
+                {SUPPLIER_LOCATIONS.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="sup-phone">Teléfono</label>
+              <input
+                id="sup-phone"
+                value={form.phone}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, phone: e.target.value }))
+                }
+                disabled={pending}
+              />
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="sup-notes">Notas</label>
+            <textarea
+              id="sup-notes"
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              disabled={pending}
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn-primary" disabled={pending}>
+              {pending
+                ? "Guardando…"
+                : form.id
+                  ? "Guardar cambios"
+                  : "Crear proveedor"}
+            </button>
             <button
               type="button"
               className="btn-secondary"
@@ -155,10 +176,12 @@ export function SuppliersManager({
             >
               Cancelar
             </button>
-          ) : null}
-        </div>
-        {feedback ? <p className="login-hint">{feedback}</p> : null}
-      </form>
+          </div>
+          {feedback ? <p className="login-hint">{feedback}</p> : null}
+        </form>
+      ) : null}
+
+      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
 
       <div className="list-toolbar">
         <label className="check-inline">
@@ -171,23 +194,23 @@ export function SuppliersManager({
         </label>
       </div>
 
-      <ul className="data-list">
+      <ul className="data-list provider-cards">
         {visible.map((s) => (
-          <li key={s.id} className={`data-card ${s.active ? "" : "is-muted"}`}>
+          <li key={s.id} className={`data-card provider-card ${s.active ? "" : "is-muted"}`}>
             <div className="data-card-top">
               <div>
                 <p className="data-card-title">{s.name}</p>
-                <p className="data-card-meta">
-                  {s.location || "Sin zona"}
-                  {s.phone ? ` · ${s.phone}` : ""}
-                  {!s.active ? " · Inactivo" : ""}
+                <p className="provider-dept">
+                  {s.location || "Sin departamento"}
                 </p>
+                {!s.active ? (
+                  <p className="data-card-meta">Inactivo</p>
+                ) : null}
               </div>
               <p className="data-card-amount">
                 {formatBs(debtsBySupplier[s.id] ?? 0)}
               </p>
             </div>
-            {s.notes ? <p className="data-card-notes">{s.notes}</p> : null}
             <div className="data-card-actions">
               <button
                 type="button"

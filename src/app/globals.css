@@ -56,7 +56,7 @@ a {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 4.5rem;
+  padding-bottom: 5.5rem;
 }
 
 @media (min-width: 900px) {
@@ -175,7 +175,9 @@ a {
 }
 
 .side-nav-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   padding: 0.55rem 0.7rem;
   border-radius: 10px;
   font-size: 0.92rem;
@@ -197,17 +199,24 @@ a {
 
 .bottom-nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
   z-index: 30;
+  width: min(420px, calc(100% - 1.25rem));
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0.15rem;
-  padding: 0.45rem 0.35rem calc(0.45rem + env(safe-area-inset-bottom));
-  background: rgba(247, 250, 244, 0.94);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--line);
+  gap: 0.2rem;
+  padding: 0.45rem 0.4rem;
+  background: rgba(247, 250, 244, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 14px 36px rgba(20, 32, 24, 0.16);
+}
+
+.floating-dock {
+  /* alias kept for clarity in markup */
 }
 
 @media (min-width: 900px) {
@@ -218,14 +227,16 @@ a {
 
 .bottom-nav-link {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.15rem;
   text-align: center;
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 650;
   color: var(--ink-soft);
-  padding: 0.45rem 0.15rem;
-  border-radius: 10px;
+  padding: 0.4rem 0.15rem;
+  border-radius: 12px;
 }
 
 .bottom-nav-link:hover {
@@ -363,13 +374,12 @@ a {
 .login-page {
   min-height: 100dvh;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
   padding: 1.25rem;
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(20, 32, 24, 0.15) 0%, rgba(20, 32, 24, 0.72) 55%, rgba(20, 32, 24, 0.9) 100%),
     radial-gradient(ellipse at 30% 20%, #3d6b45, transparent 55%),
     linear-gradient(145deg, #1a2e1f, #0f1a12 60%, #2a1a12);
 }
@@ -384,54 +394,66 @@ a {
   pointer-events: none;
 }
 
-.login-brand {
+.login-stage {
   position: relative;
   z-index: 1;
+  width: min(100%, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  animation: fade-up 0.55s ease-out;
+}
+
+.login-brand {
   color: #f7faf4;
-  margin-bottom: 1.5rem;
-  animation: fade-up 0.6s ease-out;
+  text-align: center;
+}
+
+.login-kicker {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .login-brand h1 {
-  margin: 0;
+  margin: 0.35rem 0 0;
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 10vw, 3.4rem);
-  letter-spacing: -0.04em;
-  line-height: 0.95;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .login-brand p {
-  margin: 0.65rem 0 0;
-  max-width: 18rem;
-  opacity: 0.85;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  margin: 0.35rem auto 0;
+  max-width: 16rem;
+  opacity: 0.8;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .login-card {
-  position: relative;
-  z-index: 1;
   background: var(--bg-panel);
-  border-radius: calc(var(--radius) + 4px);
-  padding: 1.25rem 1.2rem 1.4rem;
+  border-radius: calc(var(--radius) + 2px);
+  padding: 1.05rem 1.05rem 1.15rem;
   box-shadow: var(--shadow-soft);
-  animation: fade-up 0.65s ease-out 0.08s both;
 }
 
 .login-card h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.95rem;
 }
 
 .login-card .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.9rem;
+  gap: 0.3rem;
+  margin-top: 0.75rem;
 }
 
 .login-card label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--ink-soft);
 }
@@ -442,7 +464,7 @@ a {
 .reset-form select {
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 0.7rem 0.8rem;
+  padding: 0.65rem 0.75rem;
   font: inherit;
   background: #fff;
   width: 100%;
@@ -545,6 +567,25 @@ a {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.header-cta {
+  width: auto !important;
+  margin-top: 0 !important;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+}
+
+.provider-dept {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.provider-card {
+  border-left: 3px solid var(--accent);
 }
 
 .debt-total {

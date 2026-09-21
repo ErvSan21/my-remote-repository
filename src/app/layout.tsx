@@ -13,9 +13,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema Pollo",
+  title: "MAC",
   description:
-    "Gestión de compra, consignación y cobros de pollo en pie — Bolivia.",
+    "MAC — gestión de compra, consignación y cobros de pollo en pie (Bolivia).",
 };
 
 export const viewport: Viewport = {

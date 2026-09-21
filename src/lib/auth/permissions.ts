@@ -33,6 +33,7 @@ export function navForRole(role: AppRole): NavItem[] {
         href: "/pagos",
         label: "Registrar cobro",
         shortLabel: "Cobros",
+        icon: "cash",
         roles: ["vendedora", "admin", "superadmin"],
       },
     ];
@@ -46,16 +47,13 @@ export function navForRole(role: AppRole): NavItem[] {
   });
 }
 
+/** Barra flotante inferior: Inicio, Proveedores, Compras, Cobros, Clientes (sin Stock). */
 export function bottomNavForRole(role: AppRole): NavItem[] {
   const nav = navForRole(role);
   if (role === "vendedora") return nav;
 
-  const mobileHrefs = new Set([
-    "/",
-    "/compras",
-    "/pagos",
-    "/clientes",
-    "/inventario",
-  ]);
-  return nav.filter((item) => mobileHrefs.has(item.href));
+  const mobileHrefs = ["/", "/proveedores", "/compras", "/pagos", "/clientes"];
+  return mobileHrefs
+    .map((href) => nav.find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
 }

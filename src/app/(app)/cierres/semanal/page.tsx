@@ -25,7 +25,7 @@ export default async function CierreSemanalPage({ searchParams }: Props) {
       </div>
       <article className="receipt-sheet">
         <header>
-          <p className="receipt-brand">Sistema Pollo</p>
+          <p className="receipt-brand">MAC</p>
           <h1>Cierre semanal general</h1>
           <p className="receipt-code">
             {from} → {to}

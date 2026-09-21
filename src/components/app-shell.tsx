@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signOutAction } from "@/app/actions/auth";
 import { bottomNavForRole, navForRole } from "@/lib/auth/permissions";
+import { NavIconSvg } from "@/components/nav-icon";
 import type { AppRole } from "@/lib/types";
 
 type AppShellProps = {
@@ -25,7 +26,7 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden />
           <div>
-            <p className="brand-name">Sistema Pollo</p>
+            <p className="brand-name">MAC</p>
             <p className="brand-sub">
               {displayName ? `${displayName} · ${roleLabel}` : roleLabel}
             </p>
@@ -44,7 +45,8 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
           <nav className="side-nav-list">
             {nav.map((item) => (
               <Link key={item.href} href={item.href} className="side-nav-link">
-                {item.label}
+                {item.icon ? <NavIconSvg name={item.icon} /> : null}
+                <span>{item.label}</span>
               </Link>
             ))}
           </nav>
@@ -53,9 +55,10 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
         <main className="app-main">{children}</main>
       </div>
 
-      <nav className="bottom-nav" aria-label="Navegación móvil">
+      <nav className="bottom-nav floating-dock" aria-label="Navegación móvil">
         {bottomNav.map((item) => (
           <Link key={item.href} href={item.href} className="bottom-nav-link">
+            {item.icon ? <NavIconSvg name={item.icon} /> : null}
             <span>{item.shortLabel ?? item.label}</span>
           </Link>
         ))}

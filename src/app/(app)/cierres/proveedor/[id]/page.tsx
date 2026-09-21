@@ -23,7 +23,7 @@ export default async function CierreProveedorPage({ params }: Props) {
       </div>
       <article className="receipt-sheet">
         <header>
-          <p className="receipt-brand">Sistema Pollo</p>
+          <p className="receipt-brand">MAC</p>
           <h1>Cierre de cuenta — proveedor</h1>
           <p className="receipt-code">{data.supplier.name}</p>
         </header>

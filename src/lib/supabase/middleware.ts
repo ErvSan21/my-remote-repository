@@ -13,7 +13,7 @@ function isLoginPath(pathname: string): boolean {
 
 /**
  * Refreshes the auth session cookies (official @supabase/ssr middleware pattern)
- * and enforces login + role redirects for Sistema Pollo.
+ * and enforces login + role redirects for MAC.
  */
 export async function updateSession(request: NextRequest) {
   const url = getSupabaseUrl();

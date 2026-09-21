@@ -125,8 +125,6 @@ export function LoginForm({
 
   return (
     <form className="login-card" onSubmit={onSubmit}>
-      <h2>Ingresar</h2>
-
       {setupMissing && envStatus ? (
         <div className="env-status" role="status">
           <p className="env-status-title">Diagnóstico (sin secretos)</p>

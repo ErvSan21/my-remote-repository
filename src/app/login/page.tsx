@@ -12,7 +12,6 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  // Solo el estado real de env bloquea el form — no el query ?setup=1 pegajoso.
   const setupMissing = !hasSupabasePublicEnv();
   const url = getSupabaseUrl();
   const key = getSupabasePublishableKey();
@@ -20,22 +19,22 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <div className="login-page">
-      <div className="login-brand">
-        <h1>Sistema Pollo</h1>
-        <p>
-          Compra en Santa Cruz, Mairana y Cochabamba. Consignación y cobro en La
-          Paz y El Alto.
-        </p>
-      </div>
+      <div className="login-stage">
+        <div className="login-brand">
+          <p className="login-kicker">MAC</p>
+          <h1>Ingresar</h1>
+          <p>Operación de pollo en pie — Bolivia.</p>
+        </div>
 
-      <LoginForm
-        nextPath={params.next}
-        setupMissing={setupMissing}
-        accountDisabled={params.disabled === "1"}
-        supabaseUrl={url}
-        supabaseKey={key}
-        envStatus={envStatus}
-      />
+        <LoginForm
+          nextPath={params.next}
+          setupMissing={setupMissing}
+          accountDisabled={params.disabled === "1"}
+          supabaseUrl={url}
+          supabaseKey={key}
+          envStatus={envStatus}
+        />
+      </div>
     </div>
   );
 }

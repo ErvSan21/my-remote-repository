@@ -30,7 +30,7 @@ export default async function ReciboPage({ params }: Props) {
 
       <article className="receipt-sheet">
         <header>
-          <p className="receipt-brand">Sistema Pollo</p>
+          <p className="receipt-brand">MAC</p>
           <h1>Recibo de cobro</h1>
           <p className="receipt-code">{receipt.code}</p>
         </header>

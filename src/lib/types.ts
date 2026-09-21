@@ -10,10 +10,22 @@ export type PurchaseStatus =
 
 export type ConsignmentStatus = "open" | "partial" | "closed";
 
+export type NavIcon =
+  | "home"
+  | "suppliers"
+  | "purchases"
+  | "payments"
+  | "clients"
+  | "inventory"
+  | "closures"
+  | "users"
+  | "cash";
+
 export type NavItem = {
   href: string;
   label: string;
   /** Roles that can see this nav item. Empty = all authenticated. */
   roles?: AppRole[];
   shortLabel?: string;
+  icon?: NavIcon;
 };

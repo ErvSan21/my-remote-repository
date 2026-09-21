@@ -65,7 +65,7 @@ export default async function DashboardPage() {
   return (
     <>
       <section className="hero-dash">
-        <h1>Sistema Pollo</h1>
+        <h1>MAC</h1>
         <p>Resumen operativo — deudas, stock y cobros.</p>
       </section>
 
