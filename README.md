@@ -49,12 +49,13 @@ De Supabase → **Project Settings → API** (no las pegues en chat):
 | Name | Dónde |
 |------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `.env.local` + Vercel |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local` + Vercel |
-| `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` + Vercel (Sensitive) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `.env.local` + Vercel (**nombre nuevo** del dashboard; preferida) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Opcional — fallback si aún usas el nombre viejo |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env.local` + Vercel (Sensitive) — **service_role / secret** |
 | `NEXT_PUBLIC_APP_URL` | local `http://localhost:3000` / URL Vercel |
 | `NEXT_PUBLIC_BUSINESS_TZ` | `America/La_Paz` (opcional) |
 
-Sin keys configuradas, la app redirige a `/login?setup=1` (el build sigue pasando).
+El código usa `PUBLISHABLE_KEY` primero; si no está, prueba `ANON_KEY`. Sin keys, la app redirige a `/login?setup=1` (el build sigue pasando).
 
 ---
 

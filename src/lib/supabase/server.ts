@@ -3,13 +3,14 @@ import { cookies } from "next/headers";
 import { requireSupabasePublicEnv } from "@/lib/env";
 
 /**
- * Cliente Supabase para Server Components / Route Handlers / Server Actions.
+ * Server Components / Route Handlers / Server Actions client.
+ * Cookie getAll/setAll matches the official Supabase Next.js SSR snippet.
  */
 export async function createClient() {
-  const { url, anonKey } = requireSupabasePublicEnv();
+  const { url, key } = requireSupabasePublicEnv();
   const cookieStore = await cookies();
 
-  return createServerClient(url, anonKey, {
+  return createServerClient(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -20,7 +21,7 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           });
         } catch {
-          // set desde Server Component puede fallar; middleware refresca la sesión.
+          // Called from a Server Component — middleware refreshes the session.
         }
       },
     },

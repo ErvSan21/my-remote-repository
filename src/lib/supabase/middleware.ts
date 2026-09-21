@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/env";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
 import {
   canAccessPath,
   homePathForRole,
@@ -8,12 +8,12 @@ import {
 import type { AppRole } from "@/lib/types";
 
 /**
- * Refresca la sesión en cookies y aplica redirects de auth + rol.
- * Sin env configurado: redirige a /login?setup=1 (excepto /login).
+ * Refreshes the auth session cookies (official @supabase/ssr middleware pattern)
+ * and enforces login + role redirects for Sistema Pollo.
  */
 export async function updateSession(request: NextRequest) {
   const url = getSupabaseUrl();
-  const anonKey = getSupabaseAnonKey();
+  const publishableKey = getSupabasePublishableKey();
   const { pathname } = request.nextUrl;
 
   const isLogin = pathname === "/login";
@@ -26,7 +26,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!url || !anonKey) {
+  if (!url || !publishableKey) {
     if (!isLogin) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
@@ -38,7 +38,7 @@ export async function updateSession(request: NextRequest) {
 
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -55,6 +55,7 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
+  // Important: getUser() validates JWT and triggers cookie refresh via setAll.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -70,7 +71,6 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Usuario autenticado: cargar rol
   let role: AppRole = "vendedora";
   let active = true;
 

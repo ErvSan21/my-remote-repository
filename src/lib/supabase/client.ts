@@ -2,10 +2,10 @@ import { createBrowserClient } from "@supabase/ssr";
 import { requireSupabasePublicEnv } from "@/lib/env";
 
 /**
- * Cliente Supabase para el browser.
- * Lanza solo al usarse sin keys configuradas (login), no en build estático.
+ * Browser client (official @supabase/ssr pattern).
+ * Uses PUBLISHABLE_KEY (preferred) or ANON_KEY fallback.
  */
 export function createClient() {
-  const { url, anonKey } = requireSupabasePublicEnv();
-  return createBrowserClient(url, anonKey);
+  const { url, key } = requireSupabasePublicEnv();
+  return createBrowserClient(url, key);
 }

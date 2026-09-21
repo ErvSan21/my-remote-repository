@@ -2,6 +2,7 @@
 
 const PLACEHOLDER_HINTS = [
   "YOUR_PROJECT_REF",
+  "your_supabase_publishable_key_here",
   "your_supabase_anon_key_here",
   "your_supabase_service_role_key_here",
 ];
@@ -16,9 +17,23 @@ export function getSupabaseUrl(): string | undefined {
   return looksConfigured(url) ? url : undefined;
 }
 
+/**
+ * Prefer the new dashboard name `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+ * Fall back to legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` for older projects.
+ */
+export function getSupabasePublishableKey(): string | undefined {
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (looksConfigured(publishable)) return publishable;
+
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (looksConfigured(anon)) return anon;
+
+  return undefined;
+}
+
+/** @deprecated Prefer getSupabasePublishableKey — kept as alias for call sites. */
 export function getSupabaseAnonKey(): string | undefined {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return looksConfigured(key) ? key : undefined;
+  return getSupabasePublishableKey();
 }
 
 export function getSupabaseServiceRoleKey(): string | undefined {
@@ -27,20 +42,20 @@ export function getSupabaseServiceRoleKey(): string | undefined {
 }
 
 export function hasSupabasePublicEnv(): boolean {
-  return Boolean(getSupabaseUrl() && getSupabaseAnonKey());
+  return Boolean(getSupabaseUrl() && getSupabasePublishableKey());
 }
 
 export function hasSupabaseServiceEnv(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
 }
 
-export function requireSupabasePublicEnv(): { url: string; anonKey: string } {
+export function requireSupabasePublicEnv(): { url: string; key: string } {
   const url = getSupabaseUrl();
-  const anonKey = getSupabaseAnonKey();
-  if (!url || !anonKey) {
+  const key = getSupabasePublishableKey();
+  if (!url || !key) {
     throw new Error(
-      "Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY. Copia .env.local.example a .env.local y pega las keys de tu proyecto Supabase.",
+      "Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (o ANON_KEY). Copia .env.local.example a .env.local.",
     );
   }
-  return { url, anonKey };
+  return { url, key };
 }
