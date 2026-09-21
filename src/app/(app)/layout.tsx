@@ -1,9 +1,26 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { getAuthContext } from "@/lib/auth/session";
 
-export default function AppLayout({
+export const dynamic = "force-dynamic";
+
+export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <AppShell>{children}</AppShell>;
+  const auth = await getAuthContext();
+
+  if (!auth) {
+    redirect("/login");
+  }
+
+  return (
+    <AppShell
+      role={auth.profile.role}
+      displayName={auth.profile.full_name || auth.profile.username}
+    >
+      {children}
+    </AppShell>
+  );
 }

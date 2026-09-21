@@ -1,15 +1,17 @@
-import { PlaceholderModule } from "@/components/placeholder-module";
+import { redirect } from "next/navigation";
+import { UsersAdmin } from "@/components/users-admin";
+import { getAuthContext } from "@/lib/auth/session";
+import { listUsersAction } from "@/app/actions/users";
 
-export default function UsuariosPage() {
-  return (
-    <PlaceholderModule
-      title="Usuarios"
-      description="Solo superadmin: listar perfiles, cambiar roles y resetear contraseñas vía Admin API de Supabase."
-      bullets={[
-        "Roles: vendedora · admin · superadmin",
-        "Reset password (service role en servidor)",
-        "Activar / desactivar usuarios",
-      ]}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function UsuariosPage() {
+  const auth = await getAuthContext();
+  if (!auth || auth.profile.role !== "superadmin") {
+    redirect("/");
+  }
+
+  const { users, error } = await listUsersAction();
+
+  return <UsersAdmin users={users} listError={error} />;
 }

@@ -1,13 +1,43 @@
 import type { NavItem } from "@/lib/types";
 
-/** Navegación principal (admin+). Vendedora usará subset en runtime. */
+/** Navegación base; el filtrado por rol ocurre en navForRole(). */
 export const APP_NAV: NavItem[] = [
-  { href: "/", label: "Inicio", shortLabel: "Inicio" },
-  { href: "/proveedores", label: "Proveedores", shortLabel: "Proveed." },
-  { href: "/compras", label: "Compras", shortLabel: "Compras" },
-  { href: "/pagos", label: "Pagos", shortLabel: "Pagos" },
-  { href: "/clientes", label: "Clientes / Consignación", shortLabel: "Clientes" },
-  { href: "/inventario", label: "Inventario", shortLabel: "Stock" },
+  {
+    href: "/",
+    label: "Inicio",
+    shortLabel: "Inicio",
+    roles: ["admin", "superadmin"],
+  },
+  {
+    href: "/proveedores",
+    label: "Proveedores",
+    shortLabel: "Proveed.",
+    roles: ["admin", "superadmin"],
+  },
+  {
+    href: "/compras",
+    label: "Compras",
+    shortLabel: "Compras",
+    roles: ["admin", "superadmin"],
+  },
+  {
+    href: "/pagos",
+    label: "Pagos",
+    shortLabel: "Pagos",
+    roles: ["vendedora", "admin", "superadmin"],
+  },
+  {
+    href: "/clientes",
+    label: "Clientes / Consignación",
+    shortLabel: "Clientes",
+    roles: ["admin", "superadmin"],
+  },
+  {
+    href: "/inventario",
+    label: "Inventario",
+    shortLabel: "Stock",
+    roles: ["admin", "superadmin"],
+  },
   {
     href: "/cierres",
     label: "Cierres / PDF",
