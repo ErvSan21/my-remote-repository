@@ -7,6 +7,10 @@ import {
 } from "@/lib/auth/permissions";
 import type { AppRole } from "@/lib/types";
 
+function isLoginPath(pathname: string): boolean {
+  return pathname === "/login" || pathname.startsWith("/login/");
+}
+
 /**
  * Refreshes the auth session cookies (official @supabase/ssr middleware pattern)
  * and enforces login + role redirects for Sistema Pollo.
@@ -16,13 +20,18 @@ export async function updateSession(request: NextRequest) {
   const publishableKey = getSupabasePublishableKey();
   const { pathname } = request.nextUrl;
 
-  const isLogin = pathname === "/login";
+  const isLogin = isLoginPath(pathname);
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     /\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/.test(pathname);
 
   if (isPublicAsset) {
+    return NextResponse.next();
+  }
+
+  // Health check always public (no secrets returned)
+  if (pathname === "/api/health/env") {
     return NextResponse.next();
   }
 
@@ -33,6 +42,7 @@ export async function updateSession(request: NextRequest) {
       redirectUrl.searchParams.set("setup", "1");
       return NextResponse.redirect(redirectUrl);
     }
+    // Already on login: strip nothing; page decides from real env status
     return NextResponse.next();
   }
 
@@ -68,6 +78,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!user && isLogin) {
+    // Env OK but URL still has ?setup=1 from before — clean it so the form enables.
+    if (request.nextUrl.searchParams.get("setup") === "1") {
+      const clean = request.nextUrl.clone();
+      clean.searchParams.delete("setup");
+      return NextResponse.redirect(clean);
+    }
     return supabaseResponse;
   }
 

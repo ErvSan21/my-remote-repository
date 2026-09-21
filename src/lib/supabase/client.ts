@@ -3,9 +3,13 @@ import { requireSupabasePublicEnv } from "@/lib/env";
 
 /**
  * Browser client (official @supabase/ssr pattern).
- * Uses PUBLISHABLE_KEY (preferred) or ANON_KEY fallback.
+ * Prefer passing url/key from the server (runtime .env) so `next start`
+ * works even if the client bundle was built before keys existed.
  */
-export function createClient() {
-  const { url, key } = requireSupabasePublicEnv();
-  return createBrowserClient(url, key);
+export function createClient(url?: string, key?: string) {
+  if (url && key) {
+    return createBrowserClient(url, key);
+  }
+  const env = requireSupabasePublicEnv();
+  return createBrowserClient(env.url, env.key);
 }

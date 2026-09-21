@@ -799,6 +799,31 @@ a {
   text-decoration: underline;
 }
 
+.env-status {
+  margin: 0.75rem 0 0.25rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.env-status-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.env-status ul {
+  margin: 0.45rem 0 0.65rem;
+  padding-left: 1.1rem;
+}
+
+.env-status .btn-secondary {
+  width: 100%;
+}
+
 .btn-primary {
   margin-top: 1.1rem;
   width: 100%;

@@ -1,5 +1,10 @@
 import { LoginForm } from "./login-form";
-import { hasSupabasePublicEnv } from "@/lib/env";
+import {
+  getPublicEnvStatus,
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+  hasSupabasePublicEnv,
+} from "@/lib/env";
 
 type LoginPageProps = {
   searchParams: Promise<{ next?: string; setup?: string; disabled?: string }>;
@@ -7,7 +12,11 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const setupMissing = params.setup === "1" || !hasSupabasePublicEnv();
+  // Solo el estado real de env bloquea el form — no el query ?setup=1 pegajoso.
+  const setupMissing = !hasSupabasePublicEnv();
+  const url = getSupabaseUrl();
+  const key = getSupabasePublishableKey();
+  const envStatus = getPublicEnvStatus();
 
   return (
     <div className="login-page">
@@ -23,6 +32,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         nextPath={params.next}
         setupMissing={setupMissing}
         accountDisabled={params.disabled === "1"}
+        supabaseUrl={url}
+        supabaseKey={key}
+        envStatus={envStatus}
       />
     </div>
   );
