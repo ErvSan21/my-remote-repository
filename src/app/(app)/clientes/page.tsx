@@ -1,15 +1,25 @@
-import { PlaceholderModule } from "@/components/placeholder-module";
+import { requireAdmin } from "@/lib/auth/guards";
+import { listClientsAction } from "@/app/actions/clients";
+import { listConsignmentsAction } from "@/app/actions/consignments";
+import { getPolloDisponible } from "@/lib/inventory";
+import { ClientsManager } from "@/components/clients/clients-manager";
 
-export default function ClientesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ClientesPage() {
+  await requireAdmin();
+  const [clientsRes, consRes, availableStock] = await Promise.all([
+    listClientsAction(true),
+    listConsignmentsAction(),
+    getPolloDisponible(),
+  ]);
+
   return (
-    <PlaceholderModule
-      title="Clientes / Consignación"
-      description="Dejar pollo en consignación en La Paz y El Alto; cobrar en cuotas o al entregar; emitir recibo con código único."
-      bullets={[
-        "CRUD de clientes por zona",
-        "Consignaciones abiertas / parciales / cerradas",
-        "Al pagar: recibo RCP-YYYYMMDD-XXXX",
-      ]}
+    <ClientsManager
+      clients={clientsRes.clients}
+      consignments={consRes.consignments}
+      availableStock={availableStock}
+      listError={clientsRes.error || consRes.error}
     />
   );
 }

@@ -1,0 +1,170 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { requireAuth } from "@/lib/auth/guards";
+import { createClient } from "@/lib/supabase/server";
+import type { ActionResult, ClientPayment } from "@/lib/data-types";
+import type { ConsignmentStatus, PaymentMethod } from "@/lib/types";
+
+function fallbackReceiptCode() {
+  const d = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/La_Paz",
+  }).replace(/-/g, "");
+  const rand = Math.random().toString(16).slice(2, 6).toUpperCase();
+  return `RCP-${d}-${rand}`;
+}
+
+async function nextReceiptCode(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  const { data, error } = await supabase.rpc("generate_receipt_code");
+  if (!error && typeof data === "string" && data.length > 0) return data;
+  return fallbackReceiptCode();
+}
+
+function statusAfterClientPay(
+  total: number | null,
+  paid: number,
+): ConsignmentStatus {
+  if (total == null) return paid > 0 ? "partial" : "open";
+  if (paid + 0.001 >= total) return "closed";
+  if (paid > 0) return "partial";
+  return "open";
+}
+
+export async function listClientPaymentsAction(): Promise<{
+  payments: ClientPayment[];
+  error: string | null;
+}> {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("client_payments")
+    .select("*, clients(name), receipts(id, code)")
+    .order("paid_at", { ascending: false })
+    .limit(50);
+  if (error) return { payments: [], error: error.message };
+  return { payments: (data ?? []) as ClientPayment[], error: null };
+}
+
+export type CreateClientPaymentResult = ActionResult & {
+  receiptId?: string;
+  receiptCode?: string;
+};
+
+export async function createClientPaymentAction(input: {
+  client_id: string;
+  consignment_id: string | null;
+  amount: number;
+  method: PaymentMethod;
+  notes: string;
+}): Promise<CreateClientPaymentResult> {
+  const auth = await requireAuth();
+  const amount = Number(input.amount);
+
+  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, message: "El monto debe ser mayor a 0." };
+  }
+  if (!["cash", "qr", "on_delivery"].includes(input.method)) {
+    return { ok: false, message: "Método inválido." };
+  }
+
+  const supabase = await createClient();
+
+  if (input.consignment_id) {
+    const { data: cons, error } = await supabase
+      .from("consignments")
+      .select("id, client_id, total_amount, status")
+      .eq("id", input.consignment_id)
+      .maybeSingle();
+    if (error || !cons) {
+      return { ok: false, message: "Consignación no encontrada." };
+    }
+    if (cons.client_id !== input.client_id) {
+      return { ok: false, message: "La consignación no es de ese cliente." };
+    }
+  }
+
+  const { data: payment, error: payError } = await supabase
+    .from("client_payments")
+    .insert({
+      client_id: input.client_id,
+      consignment_id: input.consignment_id,
+      amount,
+      method: input.method,
+      notes: input.notes.trim() || null,
+      recorded_by: auth.user.id,
+      paid_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (payError || !payment) {
+    return { ok: false, message: payError?.message || "No se registró el cobro." };
+  }
+
+  const code = await nextReceiptCode(supabase);
+  const { data: receipt, error: recError } = await supabase
+    .from("receipts")
+    .insert({
+      client_payment_id: payment.id,
+      code,
+      issued_by: auth.user.id,
+      issued_at: new Date().toISOString(),
+    })
+    .select("id, code")
+    .single();
+
+  if (recError || !receipt) {
+    return {
+      ok: false,
+      message: recError?.message || "Cobro ok pero falló el recibo.",
+    };
+  }
+
+  if (input.consignment_id) {
+    const { data: pays } = await supabase
+      .from("client_payments")
+      .select("amount")
+      .eq("consignment_id", input.consignment_id);
+    const paid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    const { data: cons } = await supabase
+      .from("consignments")
+      .select("total_amount")
+      .eq("id", input.consignment_id)
+      .maybeSingle();
+    const status = statusAfterClientPay(
+      cons?.total_amount == null ? null : Number(cons.total_amount),
+      paid,
+    );
+    await supabase
+      .from("consignments")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", input.consignment_id);
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/clientes");
+  revalidatePath("/recibos");
+  revalidatePath("/");
+  return {
+    ok: true,
+    message: `Cobro registrado. Recibo ${receipt.code}`,
+    receiptId: receipt.id,
+    receiptCode: receipt.code,
+  };
+}
+
+export async function getReceiptAction(receiptId: string) {
+  await requireAuth();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("receipts")
+    .select(
+      "id, code, issued_at, client_payments(id, amount, method, paid_at, notes, clients(name, zone, phone))",
+    )
+    .eq("id", receiptId)
+    .maybeSingle();
+  return { receipt: data, error: error?.message ?? null };
+}

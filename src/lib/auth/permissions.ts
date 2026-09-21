@@ -1,21 +1,24 @@
 import type { AppRole, NavItem } from "@/lib/types";
 import { APP_NAV } from "@/lib/nav";
 
-const VENDEDORA_PATHS = new Set(["/pagos"]);
+function isVendedoraPath(path: string): boolean {
+  if (path === "/pagos") return true;
+  if (path.startsWith("/recibos/")) return true;
+  return false;
+}
 
 /** Rutas del shell autenticado y roles permitidos. */
 export function canAccessPath(pathname: string, role: AppRole): boolean {
   const path = pathname.split("?")[0] || "/";
 
   if (role === "vendedora") {
-    return VENDEDORA_PATHS.has(path);
+    return isVendedoraPath(path);
   }
 
   if (path === "/usuarios") {
     return role === "superadmin";
   }
 
-  // admin y superadmin: resto del app (incl. pagos-proveedores)
   return true;
 }
 
@@ -50,7 +53,7 @@ export function bottomNavForRole(role: AppRole): NavItem[] {
   const mobileHrefs = new Set([
     "/",
     "/compras",
-    "/pagos-proveedores",
+    "/pagos",
     "/clientes",
     "/inventario",
   ]);

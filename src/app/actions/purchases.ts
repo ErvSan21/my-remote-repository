@@ -57,28 +57,50 @@ export async function createPurchaseAction(input: {
 
   const amounts = resolveAmounts(qty, input.unit_price);
   const supabase = await createClient();
-  const { error } = await supabase.from("purchases").insert({
-    supplier_id: input.supplier_id,
-    purchase_date: input.purchase_date || new Date().toISOString().slice(0, 10),
-    quantity_birds: qty,
-    unit_price: amounts.unit_price,
-    total_amount: amounts.total_amount,
-    status: amounts.status,
-    notes: input.notes.trim() || null,
-    created_by: auth.user.id,
-  });
+  const { data: purchase, error } = await supabase
+    .from("purchases")
+    .insert({
+      supplier_id: input.supplier_id,
+      purchase_date: input.purchase_date || new Date().toISOString().slice(0, 10),
+      quantity_birds: qty,
+      unit_price: amounts.unit_price,
+      total_amount: amounts.total_amount,
+      status: amounts.status,
+      notes: input.notes.trim() || null,
+      created_by: auth.user.id,
+    })
+    .select("id")
+    .single();
 
-  if (error) return { ok: false, message: error.message };
+  if (error || !purchase) {
+    return { ok: false, message: error?.message || "No se creó la compra." };
+  }
+
+  const { addStockFromPurchase } = await import("@/lib/inventory");
+  const stock = await addStockFromPurchase(
+    purchase.id,
+    qty,
+    auth.user.id,
+    `Compra ${input.purchase_date}`,
+  );
+  if (!stock.ok) {
+    return {
+      ok: false,
+      message: `Compra creada pero falló el inventario: ${stock.message}`,
+    };
+  }
+
   revalidatePath("/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
+  revalidatePath("/inventario");
   revalidatePath("/");
   return {
     ok: true,
     message:
       amounts.status === "pending_price"
-        ? "Compra registrada (precio pendiente)."
-        : "Compra registrada.",
+        ? "Compra registrada (precio pendiente). Stock actualizado."
+        : "Compra registrada. Stock actualizado.",
   };
 }
 

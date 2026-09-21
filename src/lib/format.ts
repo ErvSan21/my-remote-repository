@@ -39,3 +39,19 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   qr: "QR",
   on_delivery: "Al entregar",
 };
+
+export const CLIENT_ZONES = ["La Paz", "El Alto", "Otro"] as const;
+
+export const CONSIGNMENT_STATUS_LABEL: Record<string, string> = {
+  open: "Abierta",
+  partial: "Pago parcial",
+  closed: "Cerrada",
+};
+
+export const INVENTORY_REASON_LABEL: Record<string, string> = {
+  purchase_in: "Entrada compra",
+  slaughter_adjust: "Ajuste faena",
+  consignment_out: "Salida consignación",
+  sale_out: "Salida venta",
+  adjustment: "Ajuste",
+};
