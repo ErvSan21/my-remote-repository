@@ -1,7 +1,10 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { createPurchaseAction } from "@/app/actions/purchases";
+import {
+  createPurchaseAction,
+  updatePurchaseAction,
+} from "@/app/actions/purchases";
 import type { Purchase, Supplier } from "@/lib/data-types";
 import {
   PURCHASE_STATUS_LABEL,
@@ -22,6 +25,15 @@ function todayLaPaz() {
   });
 }
 
+const emptyForm = {
+  id: "" as string,
+  supplier_id: "",
+  purchase_date: todayLaPaz(),
+  quantity_birds: "",
+  unit_price: "",
+  notes: "",
+};
+
 export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   const activeSuppliers = useMemo(
     () => suppliers.filter((s) => s.active),
@@ -29,24 +41,43 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   );
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
+    ...emptyForm,
     supplier_id: activeSuppliers[0]?.id ?? "",
-    purchase_date: todayLaPaz(),
-    quantity_birds: "",
-    unit_price: "",
-    notes: "",
   });
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const editing = Boolean(form.id);
 
   function resetForm() {
     setForm({
+      ...emptyForm,
       supplier_id: activeSuppliers[0]?.id ?? "",
       purchase_date: todayLaPaz(),
-      quantity_birds: "",
-      unit_price: "",
-      notes: "",
     });
     setShowForm(false);
+  }
+
+  function openCreate() {
+    setForm({
+      ...emptyForm,
+      supplier_id: activeSuppliers[0]?.id ?? "",
+      purchase_date: todayLaPaz(),
+    });
+    setShowForm(true);
+    setFeedback(null);
+  }
+
+  function openEdit(p: Purchase) {
+    setForm({
+      id: p.id,
+      supplier_id: p.supplier_id,
+      purchase_date: p.purchase_date,
+      quantity_birds: String(p.quantity_birds),
+      unit_price: p.unit_price == null ? "" : String(p.unit_price),
+      notes: p.notes ?? "",
+    });
+    setShowForm(true);
+    setFeedback(null);
   }
 
   function onSubmit(e: FormEvent) {
@@ -61,13 +92,16 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     }
 
     startTransition(async () => {
-      const result = await createPurchaseAction({
+      const payload = {
         supplier_id: form.supplier_id,
         purchase_date: form.purchase_date,
         quantity_birds: qty,
         unit_price,
         notes: form.notes,
-      });
+      };
+      const result = form.id
+        ? await updatePurchaseAction({ id: form.id, ...payload })
+        : await createPurchaseAction(payload);
       setFeedback(result.message);
       if (result.ok) resetForm();
     });
@@ -79,17 +113,16 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
         title="Compras"
         addLabel="Registrar compra"
         showAdd={!showForm}
-        onAdd={() => {
-          setShowForm(true);
-          setFeedback(null);
-        }}
+        onAdd={openCreate}
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Nueva compra</h3>
+          <h3 className="data-form-title">
+            {editing ? "Editar compra" : "Nueva compra"}
+          </h3>
           <div className="field">
             <label htmlFor="pur-supplier">Proveedor</label>
             <select
@@ -172,7 +205,11 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
               className="btn-primary"
               disabled={pending || activeSuppliers.length === 0}
             >
-              {pending ? "Guardando…" : "Registrar compra"}
+              {pending
+                ? "Guardando…"
+                : editing
+                  ? "Guardar cambios"
+                  : "Registrar compra"}
             </button>
             <button
               type="button"
@@ -191,26 +228,32 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
       <ul className="data-list">
         {purchases.map((p) => (
-          <li key={p.id} className="data-card">
-            <div className="data-card-top">
-              <div>
-                <p className="data-card-title">
-                  {p.suppliers?.name ?? "Proveedor"}
-                </p>
-                <p className="data-card-meta">
-                  {formatDateLaPaz(p.purchase_date)} · {p.quantity_birds} aves
-                </p>
+          <li key={p.id}>
+            <button
+              type="button"
+              className="data-card"
+              onClick={() => openEdit(p)}
+            >
+              <div className="data-card-top">
+                <div>
+                  <p className="data-card-title">
+                    {p.suppliers?.name ?? "Proveedor"}
+                  </p>
+                  <p className="data-card-meta">
+                    {formatDateLaPaz(p.purchase_date)} · {p.quantity_birds} aves
+                  </p>
+                </div>
+                <span className={`status-pill status-${p.status}`}>
+                  {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
+                </span>
               </div>
-              <span className={`status-pill status-${p.status}`}>
-                {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
-              </span>
-            </div>
-            <p className="data-card-meta">
-              Precio:{" "}
-              {p.unit_price == null ? "pendiente" : formatBs(p.unit_price)}
-              {" · "}
-              Total: {formatBs(p.total_amount)}
-            </p>
+              <p className="data-card-meta">
+                Precio:{" "}
+                {p.unit_price == null ? "pendiente" : formatBs(p.unit_price)}
+                {" · "}
+                Total: {formatBs(p.total_amount)}
+              </p>
+            </button>
           </li>
         ))}
         {purchases.length === 0 ? (

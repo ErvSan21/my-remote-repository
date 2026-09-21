@@ -2,7 +2,10 @@
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createClientPaymentAction } from "@/app/actions/client-payments";
+import {
+  createClientPaymentAction,
+  updateClientPaymentAction,
+} from "@/app/actions/client-payments";
 import type { Client, ClientPayment, Consignment } from "@/lib/data-types";
 import {
   PAYMENT_METHOD_LABEL,
@@ -32,7 +35,6 @@ export function ClientPaymentsManager({
   consignments,
   payments,
   listError,
-  isVendedora,
 }: Props) {
   const router = useRouter();
   const activeClients = useMemo(
@@ -40,6 +42,7 @@ export function ClientPaymentsManager({
     [clients],
   );
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState("");
   const [clientId, setClientId] = useState(activeClients[0]?.id ?? "");
   const [consignmentId, setConsignmentId] = useState("");
   const [amount, setAmount] = useState("");
@@ -47,20 +50,69 @@ export function ClientPaymentsManager({
   const [notes, setNotes] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const editing = Boolean(editId);
 
-  const openForClient = useMemo(
-    () =>
-      consignments.filter(
-        (c) =>
-          c.client_id === clientId &&
-          (c.status === "open" || c.status === "partial"),
-      ),
-    [consignments, clientId],
-  );
+  const openForClient = useMemo(() => {
+    const open = consignments.filter(
+      (c) =>
+        c.client_id === clientId &&
+        (c.status === "open" || c.status === "partial"),
+    );
+    if (!consignmentId) return open;
+    const current = consignments.find((c) => c.id === consignmentId);
+    if (current && !open.some((c) => c.id === current.id)) {
+      return [current, ...open];
+    }
+    return open;
+  }, [consignments, clientId, consignmentId]);
+
+  function resetForm() {
+    setEditId("");
+    setClientId(activeClients[0]?.id ?? "");
+    setConsignmentId("");
+    setAmount("");
+    setMethod("cash");
+    setNotes("");
+    setShowForm(false);
+  }
+
+  function openCreate() {
+    resetForm();
+    setShowForm(true);
+    setFeedback(null);
+  }
+
+  function openEdit(p: ClientPayment) {
+    setEditId(p.id);
+    setClientId(p.client_id);
+    setConsignmentId(p.consignment_id ?? "");
+    setAmount(String(p.amount));
+    setMethod(p.method);
+    setNotes(p.notes ?? "");
+    setShowForm(true);
+    setFeedback(null);
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     startTransition(async () => {
+      if (editId) {
+        const result = await updateClientPaymentAction({
+          id: editId,
+          client_id: clientId,
+          consignment_id: consignmentId || null,
+          amount: Number(amount),
+          method,
+          notes,
+        });
+        setFeedback(result.message);
+        if (result.ok) {
+          resetForm();
+          router.refresh();
+        }
+        return;
+      }
+
       const result = await createClientPaymentAction({
         client_id: clientId,
         consignment_id: consignmentId || null,
@@ -70,10 +122,7 @@ export function ClientPaymentsManager({
       });
       setFeedback(result.message);
       if (result.ok && result.receiptId) {
-        setAmount("");
-        setNotes("");
-        setConsignmentId("");
-        setShowForm(false);
+        resetForm();
         router.push(`/recibos/${result.receiptId}`);
         router.refresh();
       }
@@ -83,20 +132,19 @@ export function ClientPaymentsManager({
   return (
     <div className="data-stack">
       <PageHeader
-        title={isVendedora ? "Cobros" : "Cobros"}
+        title="Cobros"
         addLabel="Registrar cobro"
         showAdd={!showForm}
-        onAdd={() => {
-          setShowForm(true);
-          setFeedback(null);
-        }}
+        onAdd={openCreate}
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Nuevo cobro</h3>
+          <h3 className="data-form-title">
+            {editing ? "Editar cobro" : "Nuevo cobro"}
+          </h3>
           <div className="field">
             <label htmlFor="pay-client">Cliente</label>
             <select
@@ -164,18 +212,32 @@ export function ClientPaymentsManager({
               </select>
             </div>
           </div>
+          <div className="field">
+            <label htmlFor="pay-notes">Notas</label>
+            <textarea
+              id="pay-notes"
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={pending}
+            />
+          </div>
           <div className="form-actions">
             <button
               type="submit"
               className="btn-primary"
               disabled={pending || !clientId}
             >
-              {pending ? "Registrando…" : "Cobrar"}
+              {pending
+                ? "Guardando…"
+                : editing
+                  ? "Guardar cambios"
+                  : "Cobrar"}
             </button>
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
             >
               Cancelar
             </button>
@@ -188,22 +250,28 @@ export function ClientPaymentsManager({
         {payments.map((p) => {
           const rec = receiptFromPayment(p);
           return (
-            <li key={p.id} className="data-card">
-              <div className="data-card-top">
-                <div>
-                  <p className="data-card-title">
-                    {p.clients?.name ?? "Cliente"}
-                  </p>
-                  <p className="data-card-meta">
-                    {formatDateLaPaz(p.paid_at)} ·{" "}
-                    {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
-                    {rec ? ` · ${rec.code}` : ""}
-                  </p>
+            <li key={p.id} className="data-card-wrap">
+              <button
+                type="button"
+                className="data-card"
+                onClick={() => openEdit(p)}
+              >
+                <div className="data-card-top">
+                  <div>
+                    <p className="data-card-title">
+                      {p.clients?.name ?? "Cliente"}
+                    </p>
+                    <p className="data-card-meta">
+                      {formatDateLaPaz(p.paid_at)} ·{" "}
+                      {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                      {rec ? ` · ${rec.code}` : ""}
+                    </p>
+                  </div>
+                  <p className="data-card-amount">{formatBs(p.amount)}</p>
                 </div>
-                <p className="data-card-amount">{formatBs(p.amount)}</p>
-              </div>
+              </button>
               {rec ? (
-                <div className="data-card-actions">
+                <div className="data-card-actions card-wrap-actions">
                   <Link className="btn-secondary" href={`/recibos/${rec.id}`}>
                     Ver recibo
                   </Link>

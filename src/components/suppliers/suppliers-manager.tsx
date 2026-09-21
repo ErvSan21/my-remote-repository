@@ -35,6 +35,8 @@ export function SuppliersManager({
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
 
+  const editing = Boolean(form.id);
+
   const visible = useMemo(() => {
     const active = suppliers.filter((s) => s.active);
     const q = normalize(query.trim());
@@ -48,6 +50,24 @@ export function SuppliersManager({
   function resetForm() {
     setForm(emptyForm);
     setShowForm(false);
+    setFeedback(null);
+  }
+
+  function openCreate() {
+    setForm(emptyForm);
+    setShowForm(true);
+    setFeedback(null);
+  }
+
+  function openEdit(s: Supplier) {
+    setForm({
+      id: s.id,
+      name: s.name,
+      location: s.location || "Santa Cruz",
+      phone: s.phone ?? "",
+      notes: s.notes ?? "",
+    });
+    setShowForm(true);
     setFeedback(null);
   }
 
@@ -72,18 +92,16 @@ export function SuppliersManager({
         title="Proveedores"
         addLabel="Crear proveedor"
         showAdd={!showForm}
-        onAdd={() => {
-          setForm(emptyForm);
-          setShowForm(true);
-          setFeedback(null);
-        }}
+        onAdd={openCreate}
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Crear proveedor</h3>
+          <h3 className="data-form-title">
+            {editing ? "Editar proveedor" : "Crear proveedor"}
+          </h3>
           <div className="field">
             <label htmlFor="sup-name">Nombre y apellido</label>
             <input
@@ -139,7 +157,11 @@ export function SuppliersManager({
           </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={pending}>
-              {pending ? "Guardando…" : "Crear proveedor"}
+              {pending
+                ? "Guardando…"
+                : editing
+                  ? "Guardar cambios"
+                  : "Crear proveedor"}
             </button>
             <button
               type="button"
@@ -171,19 +193,25 @@ export function SuppliersManager({
 
       <ul className="data-list provider-cards">
         {visible.map((s) => (
-          <li key={s.id} className="data-card provider-card">
-            <div className="data-card-top">
-              <div>
-                <p className="data-card-title">{s.name}</p>
-                <p className="provider-dept">
-                  {s.location || "Sin departamento"}
+          <li key={s.id}>
+            <button
+              type="button"
+              className="data-card provider-card"
+              onClick={() => openEdit(s)}
+            >
+              <div className="data-card-top">
+                <div>
+                  <p className="data-card-title">{s.name}</p>
+                  <p className="provider-dept">
+                    {s.location || "Sin departamento"}
+                  </p>
+                  {s.phone ? <p className="data-card-meta">{s.phone}</p> : null}
+                </div>
+                <p className="data-card-amount">
+                  {formatBs(debtsBySupplier[s.id] ?? 0)}
                 </p>
-                {s.phone ? <p className="data-card-meta">{s.phone}</p> : null}
               </div>
-              <p className="data-card-amount">
-                {formatBs(debtsBySupplier[s.id] ?? 0)}
-              </p>
-            </div>
+            </button>
           </li>
         ))}
         {visible.length === 0 ? (

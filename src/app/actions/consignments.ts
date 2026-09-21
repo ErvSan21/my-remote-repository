@@ -123,3 +123,53 @@ export async function updateConsignmentPriceAction(input: {
   revalidatePath("/pagos");
   return { ok: true, message: "Precio actualizado." };
 }
+
+export async function updateConsignmentAction(input: {
+  id: string;
+  client_id: string;
+  unit_price: number | null;
+  notes: string;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  if (!input.id) return { ok: false, message: "Consignación inválida." };
+  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
+
+  const unitPrice =
+    input.unit_price == null || Number.isNaN(Number(input.unit_price))
+      ? null
+      : Number(input.unit_price);
+  if (unitPrice != null && unitPrice < 0) {
+    return { ok: false, message: "Precio inválido." };
+  }
+
+  const supabase = await createClient();
+  const { data: cons, error: fetchError } = await supabase
+    .from("consignments")
+    .select("quantity_birds")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (fetchError || !cons) {
+    return { ok: false, message: "Consignación no encontrada." };
+  }
+
+  const total =
+    unitPrice == null
+      ? null
+      : Math.round(Number(cons.quantity_birds) * unitPrice * 100) / 100;
+
+  const { error } = await supabase
+    .from("consignments")
+    .update({
+      client_id: input.client_id,
+      unit_price: unitPrice,
+      total_amount: total,
+      notes: input.notes.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/clientes");
+  revalidatePath("/pagos");
+  return { ok: true, message: "Consignación actualizada." };
+}

@@ -1,7 +1,10 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { createSupplierPaymentAction } from "@/app/actions/supplier-payments";
+import {
+  createSupplierPaymentAction,
+  updateSupplierPaymentAction,
+} from "@/app/actions/supplier-payments";
 import type { Purchase, Supplier, SupplierPayment } from "@/lib/data-types";
 import type { SupplierDebtSummary } from "@/app/actions/supplier-payments";
 import {
@@ -34,6 +37,7 @@ export function SupplierPaymentsManager({
     [suppliers],
   );
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState("");
   const [supplierId, setSupplierId] = useState(activeSuppliers[0]?.id ?? "");
   const [purchaseId, setPurchaseId] = useState("");
   const [amount, setAmount] = useState("");
@@ -41,35 +45,65 @@ export function SupplierPaymentsManager({
   const [notes, setNotes] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const editing = Boolean(editId);
 
-  const openPurchases = useMemo(
-    () =>
-      purchases.filter(
-        (p) =>
-          p.supplier_id === supplierId &&
-          p.total_amount != null &&
-          p.status !== "paid",
-      ),
-    [purchases, supplierId],
-  );
+  const openPurchases = useMemo(() => {
+    const open = purchases.filter(
+      (p) =>
+        p.supplier_id === supplierId &&
+        p.total_amount != null &&
+        p.status !== "paid",
+    );
+    if (!purchaseId) return open;
+    const current = purchases.find((p) => p.id === purchaseId);
+    if (current && !open.some((p) => p.id === current.id)) {
+      return [current, ...open];
+    }
+    return open;
+  }, [purchases, supplierId, purchaseId]);
+
+  function resetForm() {
+    setEditId("");
+    setSupplierId(activeSuppliers[0]?.id ?? "");
+    setPurchaseId("");
+    setAmount("");
+    setMethod("cash");
+    setNotes("");
+    setShowForm(false);
+  }
+
+  function openCreate() {
+    resetForm();
+    setShowForm(true);
+    setFeedback(null);
+  }
+
+  function openEdit(p: SupplierPayment) {
+    setEditId(p.id);
+    setSupplierId(p.supplier_id);
+    setPurchaseId(p.purchase_id ?? "");
+    setAmount(String(p.amount));
+    setMethod(p.method === "qr" ? "qr" : "cash");
+    setNotes(p.notes ?? "");
+    setShowForm(true);
+    setFeedback(null);
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createSupplierPaymentAction({
+      const payload = {
         supplier_id: supplierId,
         purchase_id: purchaseId || null,
         amount: Number(amount),
         method,
         notes,
-      });
+      };
+      const result = editId
+        ? await updateSupplierPaymentAction({ id: editId, ...payload })
+        : await createSupplierPaymentAction(payload);
       setFeedback(result.message);
-      if (result.ok) {
-        setAmount("");
-        setNotes("");
-        setPurchaseId("");
-        setShowForm(false);
-      }
+      if (result.ok) resetForm();
     });
   }
 
@@ -79,10 +113,7 @@ export function SupplierPaymentsManager({
         title="Pagos proveedores"
         addLabel="Registrar pago"
         showAdd={!showForm}
-        onAdd={() => {
-          setShowForm(true);
-          setFeedback(null);
-        }}
+        onAdd={openCreate}
         trailing={
           <div className="debt-total compact">
             <span>Deuda</span>
@@ -95,7 +126,9 @@ export function SupplierPaymentsManager({
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Registrar pago</h3>
+          <h3 className="data-form-title">
+            {editing ? "Editar pago" : "Registrar pago"}
+          </h3>
           <div className="field">
             <label htmlFor="pay-supplier">Proveedor</label>
             <select
@@ -158,18 +191,32 @@ export function SupplierPaymentsManager({
               </select>
             </div>
           </div>
+          <div className="field">
+            <label htmlFor="pay-notes">Notas</label>
+            <textarea
+              id="pay-notes"
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={pending}
+            />
+          </div>
           <div className="form-actions">
             <button
               type="submit"
               className="btn-primary"
               disabled={pending || !supplierId}
             >
-              {pending ? "Guardando…" : "Registrar pago"}
+              {pending
+                ? "Guardando…"
+                : editing
+                  ? "Guardar cambios"
+                  : "Registrar pago"}
             </button>
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
             >
               Cancelar
             </button>
@@ -191,19 +238,25 @@ export function SupplierPaymentsManager({
 
       <ul className="data-list">
         {recentPayments.map((p) => (
-          <li key={p.id} className="data-card">
-            <div className="data-card-top">
-              <div>
-                <p className="data-card-title">
-                  {p.suppliers?.name ?? "Proveedor"}
-                </p>
-                <p className="data-card-meta">
-                  {formatDateLaPaz(p.paid_at)} ·{" "}
-                  {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
-                </p>
+          <li key={p.id}>
+            <button
+              type="button"
+              className="data-card"
+              onClick={() => openEdit(p)}
+            >
+              <div className="data-card-top">
+                <div>
+                  <p className="data-card-title">
+                    {p.suppliers?.name ?? "Proveedor"}
+                  </p>
+                  <p className="data-card-meta">
+                    {formatDateLaPaz(p.paid_at)} ·{" "}
+                    {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                  </p>
+                </div>
+                <p className="data-card-amount">{formatBs(p.amount)}</p>
               </div>
-              <p className="data-card-amount">{formatBs(p.amount)}</p>
-            </div>
+            </button>
           </li>
         ))}
         {recentPayments.length === 0 ? (

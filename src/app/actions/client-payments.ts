@@ -156,6 +156,102 @@ export async function createClientPaymentAction(input: {
   };
 }
 
+async function refreshConsignmentStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  consignmentId: string | null,
+) {
+  if (!consignmentId) return;
+  const { data: pays } = await supabase
+    .from("client_payments")
+    .select("amount")
+    .eq("consignment_id", consignmentId);
+  const paid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  const { data: cons } = await supabase
+    .from("consignments")
+    .select("total_amount")
+    .eq("id", consignmentId)
+    .maybeSingle();
+  const status = statusAfterClientPay(
+    cons?.total_amount == null ? null : Number(cons.total_amount),
+    paid,
+  );
+  await supabase
+    .from("consignments")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", consignmentId);
+}
+
+export async function updateClientPaymentAction(input: {
+  id: string;
+  client_id: string;
+  consignment_id: string | null;
+  amount: number;
+  method: PaymentMethod;
+  notes: string;
+}): Promise<ActionResult> {
+  await requireAuth();
+  const amount = Number(input.amount);
+
+  if (!input.id) return { ok: false, message: "Cobro inválido." };
+  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, message: "El monto debe ser mayor a 0." };
+  }
+  if (!["cash", "qr", "on_delivery"].includes(input.method)) {
+    return { ok: false, message: "Método inválido." };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("client_payments")
+    .select("id, consignment_id")
+    .eq("id", input.id)
+    .maybeSingle();
+
+  if (fetchError || !existing) {
+    return { ok: false, message: "Cobro no encontrado." };
+  }
+
+  if (input.consignment_id) {
+    const { data: cons, error } = await supabase
+      .from("consignments")
+      .select("id, client_id")
+      .eq("id", input.consignment_id)
+      .maybeSingle();
+    if (error || !cons) {
+      return { ok: false, message: "Consignación no encontrada." };
+    }
+    if (cons.client_id !== input.client_id) {
+      return { ok: false, message: "La consignación no es de ese cliente." };
+    }
+  }
+
+  const { error } = await supabase
+    .from("client_payments")
+    .update({
+      client_id: input.client_id,
+      consignment_id: input.consignment_id,
+      amount,
+      method: input.method,
+      notes: input.notes.trim() || null,
+    })
+    .eq("id", input.id);
+
+  if (error) return { ok: false, message: error.message };
+
+  const previousConsId = (existing.consignment_id as string | null) ?? null;
+  await refreshConsignmentStatus(supabase, previousConsId);
+  if (input.consignment_id !== previousConsId) {
+    await refreshConsignmentStatus(supabase, input.consignment_id);
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/clientes");
+  revalidatePath("/recibos");
+  revalidatePath("/");
+  return { ok: true, message: "Cobro actualizado." };
+}
+
 export async function getReceiptAction(receiptId: string) {
   await requireAuth();
   const supabase = await createClient();

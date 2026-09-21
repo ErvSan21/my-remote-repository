@@ -1,13 +1,14 @@
-import Link from "next/link";
 import { signOutAction } from "@/app/actions/auth";
 import { bottomNavForRole, navForRole } from "@/lib/auth/permissions";
-import { NavIconSvg } from "@/components/nav-icon";
+import { FloatingDock } from "@/components/floating-dock";
+import { SideNavLinks } from "@/components/side-nav-links";
 import type { AppRole } from "@/lib/types";
+import type { ReactNode } from "react";
 
 type AppShellProps = {
   role: AppRole;
   displayName?: string | null;
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function AppShell({ role, displayName, children }: AppShellProps) {
@@ -42,27 +43,13 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
       <div className="app-body">
         <aside className="side-nav" aria-label="Navegación principal">
           <p className="side-nav-label">Menú</p>
-          <nav className="side-nav-list">
-            {nav.map((item) => (
-              <Link key={item.href} href={item.href} className="side-nav-link">
-                {item.icon ? <NavIconSvg name={item.icon} /> : null}
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
+          <SideNavLinks items={nav} />
         </aside>
 
         <main className="app-main">{children}</main>
       </div>
 
-      <nav className="bottom-nav floating-dock" aria-label="Navegación móvil">
-        {bottomNav.map((item) => (
-          <Link key={item.href} href={item.href} className="bottom-nav-link">
-            {item.icon ? <NavIconSvg name={item.icon} /> : null}
-            <span>{item.shortLabel ?? item.label}</span>
-          </Link>
-        ))}
-      </nav>
+      <FloatingDock items={bottomNav} />
     </div>
   );
 }
