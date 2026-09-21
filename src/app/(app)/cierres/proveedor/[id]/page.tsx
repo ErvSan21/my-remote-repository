@@ -28,7 +28,7 @@ export default async function CierreProveedorPage({ params }: Props) {
           <p className="receipt-code">{data.supplier.name}</p>
         </header>
         <p className="module-desc">
-          Zona: {data.supplier.location || "—"} · Tel:{" "}
+          Departamento: {data.supplier.location || "—"} · Cel:{" "}
           {data.supplier.phone || "—"}
         </p>
         <h3>Compras</h3>

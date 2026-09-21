@@ -18,14 +18,23 @@ export function formatDateLaPaz(isoDate: string | null | undefined): string {
   });
 }
 
-export const SUPPLIER_LOCATIONS = [
-  "Santa Cruz",
-  "Mairana",
+export const BOLIVIA_DEPARTMENTS = [
+  "La Paz",
   "Cochabamba",
-  "Otro",
+  "Santa Cruz",
+  "Oruro",
+  "Potosí",
+  "Tarija",
+  "Chuquisaca",
+  "Beni",
+  "Pando",
 ] as const;
 
-export type SupplierLocation = (typeof SUPPLIER_LOCATIONS)[number];
+export type BoliviaDepartment = (typeof BOLIVIA_DEPARTMENTS)[number];
+
+/** @deprecated Use BOLIVIA_DEPARTMENTS */
+export const SUPPLIER_LOCATIONS = BOLIVIA_DEPARTMENTS;
+export type SupplierLocation = BoliviaDepartment;
 
 export const PURCHASE_STATUS_LABEL: Record<string, string> = {
   pending_price: "Precio pendiente",

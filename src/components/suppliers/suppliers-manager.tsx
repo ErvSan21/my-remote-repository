@@ -1,12 +1,9 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import {
-  setSupplierActiveAction,
-  upsertSupplierAction,
-} from "@/app/actions/suppliers";
+import { upsertSupplierAction } from "@/app/actions/suppliers";
 import type { Supplier } from "@/lib/data-types";
-import { SUPPLIER_LOCATIONS, formatBs } from "@/lib/format";
+import { BOLIVIA_DEPARTMENTS, formatBs } from "@/lib/format";
 
 type Props = {
   suppliers: Supplier[];
@@ -22,6 +19,10 @@ const emptyForm = {
   notes: "",
 };
 
+function normalize(value: string | null | undefined) {
+  return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
+
 export function SuppliersManager({
   suppliers,
   debtsBySupplier,
@@ -30,19 +31,29 @@ export function SuppliersManager({
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
+  const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const visible = useMemo(
-    () => (showInactive ? suppliers : suppliers.filter((s) => s.active)),
-    [suppliers, showInactive],
-  );
+  const visible = useMemo(() => {
+    const active = suppliers.filter((s) => s.active);
+    const q = normalize(query.trim());
+    if (!q) return active;
+    return active.filter((s) => {
+      const haystack = normalize(`${s.name} ${s.phone ?? ""}`);
+      return haystack.includes(q);
+    });
+  }, [suppliers, query]);
 
   function edit(s: Supplier) {
+    const dept = BOLIVIA_DEPARTMENTS.includes(
+      s.location as (typeof BOLIVIA_DEPARTMENTS)[number],
+    )
+      ? (s.location as string)
+      : "Santa Cruz";
     setForm({
       id: s.id,
       name: s.name,
-      location: s.location || "Otro",
+      location: dept,
       phone: s.phone || "",
       notes: s.notes || "",
     });
@@ -71,34 +82,29 @@ export function SuppliersManager({
     });
   }
 
-  function toggleActive(s: Supplier) {
-    startTransition(async () => {
-      const result = await setSupplierActiveAction(s.id, !s.active);
-      setFeedback(result.message);
-    });
-  }
-
   return (
     <div className="data-stack">
-      <header className="data-header">
+      <header className="data-header providers-header">
         <div>
           <h2 className="module-title">Proveedores</h2>
           <p className="module-desc">
-            Nombre y departamento. La deuda se calcula con compras con precio
-            menos pagos.
+            Nombre, apellido y departamento. Busca por nombre, apellido o
+            celular.
           </p>
         </div>
         {!showForm ? (
           <button
             type="button"
-            className="btn-primary header-cta"
+            className="btn-plus"
+            aria-label="Crear proveedor"
+            title="Crear proveedor"
             onClick={() => {
               setForm(emptyForm);
               setShowForm(true);
               setFeedback(null);
             }}
           >
-            Crear proveedor
+            +
           </button>
         ) : null}
       </header>
@@ -111,10 +117,11 @@ export function SuppliersManager({
             {form.id ? "Editar proveedor" : "Crear proveedor"}
           </h3>
           <div className="field">
-            <label htmlFor="sup-name">Nombre</label>
+            <label htmlFor="sup-name">Nombre y apellido</label>
             <input
               id="sup-name"
               required
+              placeholder="Ej. Juan Pérez"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               disabled={pending}
@@ -125,13 +132,14 @@ export function SuppliersManager({
               <label htmlFor="sup-loc">Departamento</label>
               <select
                 id="sup-loc"
+                required
                 value={form.location}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, location: e.target.value }))
                 }
                 disabled={pending}
               >
-                {SUPPLIER_LOCATIONS.map((loc) => (
+                {BOLIVIA_DEPARTMENTS.map((loc) => (
                   <option key={loc} value={loc}>
                     {loc}
                   </option>
@@ -139,9 +147,11 @@ export function SuppliersManager({
               </select>
             </div>
             <div className="field">
-              <label htmlFor="sup-phone">Teléfono</label>
+              <label htmlFor="sup-phone">Celular</label>
               <input
                 id="sup-phone"
+                inputMode="tel"
+                placeholder="Ej. 70000000"
                 value={form.phone}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, phone: e.target.value }))
@@ -183,28 +193,30 @@ export function SuppliersManager({
 
       {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
 
-      <div className="list-toolbar">
-        <label className="check-inline">
-          <input
-            type="checkbox"
-            checked={showInactive}
-            onChange={(e) => setShowInactive(e.target.checked)}
-          />
-          Mostrar inactivos
+      <div className="search-bar">
+        <label htmlFor="sup-search" className="sr-only">
+          Buscar proveedor
         </label>
+        <input
+          id="sup-search"
+          type="search"
+          placeholder="Buscar por nombre, apellido o celular…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
       </div>
 
       <ul className="data-list provider-cards">
         {visible.map((s) => (
-          <li key={s.id} className={`data-card provider-card ${s.active ? "" : "is-muted"}`}>
+          <li key={s.id} className="data-card provider-card">
             <div className="data-card-top">
               <div>
                 <p className="data-card-title">{s.name}</p>
                 <p className="provider-dept">
                   {s.location || "Sin departamento"}
                 </p>
-                {!s.active ? (
-                  <p className="data-card-meta">Inactivo</p>
+                {s.phone ? (
+                  <p className="data-card-meta">{s.phone}</p>
                 ) : null}
               </div>
               <p className="data-card-amount">
@@ -220,19 +232,15 @@ export function SuppliersManager({
               >
                 Editar
               </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => toggleActive(s)}
-                disabled={pending}
-              >
-                {s.active ? "Desactivar" : "Reactivar"}
-              </button>
             </div>
           </li>
         ))}
         {visible.length === 0 ? (
-          <li className="data-empty">No hay proveedores todavía.</li>
+          <li className="data-empty">
+            {query.trim()
+              ? "Ningún proveedor coincide con la búsqueda."
+              : "No hay proveedores todavía."}
+          </li>
         ) : null}
       </ul>
     </div>

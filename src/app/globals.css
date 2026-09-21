@@ -577,6 +577,57 @@ a {
   white-space: nowrap;
 }
 
+.providers-header {
+  align-items: center;
+}
+
+.btn-plus {
+  appearance: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: none;
+  border-radius: 999px;
+  margin-left: auto;
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(196, 92, 38, 0.28);
+}
+
+.btn-plus:hover {
+  filter: brightness(1.05);
+}
+
+.search-bar {
+  margin-top: 0.15rem;
+}
+
+.search-bar input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: #fff;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .provider-dept {
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
