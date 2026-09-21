@@ -59,7 +59,7 @@ export async function upsertSupplierAction(input: {
   }
 
   revalidatePath("/proveedores");
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/");
   return {
@@ -81,7 +81,7 @@ export async function setSupplierActiveAction(
 
   if (error) return { ok: false, message: error.message };
   revalidatePath("/proveedores");
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/");
   return {

@@ -90,7 +90,7 @@ export async function createPurchaseAction(input: {
     };
   }
 
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
   revalidatePath("/inventario");
@@ -155,7 +155,7 @@ export async function updatePurchaseAction(input: {
     .eq("id", input.id);
 
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
   revalidatePath("/");

@@ -211,7 +211,7 @@ a {
   z-index: 30;
   width: min(420px, calc(100% - 1.25rem));
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.2rem;
   padding: 0.45rem 0.4rem;
   background: rgba(247, 250, 244, 0.92);
@@ -1044,6 +1044,16 @@ button.data-card:focus-visible {
   background: var(--bg-deep);
   border-color: var(--bg-deep);
   color: #f7faf4;
+}
+
+.area-tabs {
+  margin-top: -0.15rem;
+}
+
+.area-tabs .tab-btn {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
 }
 
 .receipt-page {

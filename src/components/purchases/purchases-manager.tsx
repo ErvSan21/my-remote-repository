@@ -12,6 +12,7 @@ import {
   formatDateLaPaz,
 } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
+import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
 type Props = {
   suppliers: Supplier[];
@@ -115,6 +116,8 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
         showAdd={!showForm}
         onAdd={openCreate}
       />
+
+      <ProveedoresAreaTabs />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 

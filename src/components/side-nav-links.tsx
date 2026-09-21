@@ -11,6 +11,14 @@ type Props = {
 
 function isActiveHref(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
+  if (href === "/proveedores") {
+    return (
+      pathname === "/proveedores" ||
+      pathname.startsWith("/proveedores/") ||
+      pathname === "/compras" ||
+      pathname.startsWith("/compras/")
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

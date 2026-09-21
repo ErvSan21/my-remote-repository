@@ -5,6 +5,7 @@ import { upsertSupplierAction } from "@/app/actions/suppliers";
 import type { Supplier } from "@/lib/data-types";
 import { BOLIVIA_DEPARTMENTS, formatBs } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
+import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
 type Props = {
   suppliers: Supplier[];
@@ -94,6 +95,8 @@ export function SuppliersManager({
         showAdd={!showForm}
         onAdd={openCreate}
       />
+
+      <ProveedoresAreaTabs />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 

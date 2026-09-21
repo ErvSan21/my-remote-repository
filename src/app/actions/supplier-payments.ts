@@ -178,7 +178,7 @@ export async function createSupplierPaymentAction(input: {
   }
 
   revalidatePath("/pagos-proveedores");
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago registrado." };
@@ -290,7 +290,7 @@ export async function updateSupplierPaymentAction(input: {
   }
 
   revalidatePath("/pagos-proveedores");
-  revalidatePath("/compras");
+  revalidatePath("/proveedores/compras");
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago actualizado." };

@@ -96,7 +96,7 @@ export default async function DashboardPage() {
         {" · "}
         <Link href="/proveedores">Proveedores</Link>
         {" · "}
-        <Link href="/compras">Compras</Link>
+        <Link href="/proveedores/compras">Compras</Link>
         {" · "}
         <Link href="/pagos-proveedores">Pagos prov.</Link>
         {" · "}
