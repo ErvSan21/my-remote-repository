@@ -15,7 +15,7 @@ export function canAccessPath(pathname: string, role: AppRole): boolean {
     return role === "superadmin";
   }
 
-  // admin y superadmin: resto del app
+  // admin y superadmin: resto del app (incl. pagos-proveedores)
   return true;
 }
 
@@ -28,8 +28,8 @@ export function navForRole(role: AppRole): NavItem[] {
     return [
       {
         href: "/pagos",
-        label: "Registrar pago",
-        shortLabel: "Pagos",
+        label: "Registrar cobro",
+        shortLabel: "Cobros",
         roles: ["vendedora", "admin", "superadmin"],
       },
     ];
@@ -50,7 +50,7 @@ export function bottomNavForRole(role: AppRole): NavItem[] {
   const mobileHrefs = new Set([
     "/",
     "/compras",
-    "/pagos",
+    "/pagos-proveedores",
     "/clientes",
     "/inventario",
   ]);

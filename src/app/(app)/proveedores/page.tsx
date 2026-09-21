@@ -1,15 +1,27 @@
-import { PlaceholderModule } from "@/components/placeholder-module";
+import { requireAdmin } from "@/lib/auth/guards";
+import { listSuppliersAction } from "@/app/actions/suppliers";
+import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
+import { SuppliersManager } from "@/components/suppliers/suppliers-manager";
 
-export default function ProveedoresPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ProveedoresPage() {
+  await requireAdmin();
+  const [{ suppliers, error }, debts] = await Promise.all([
+    listSuppliersAction(true),
+    getSupplierDebtsAction(),
+  ]);
+
+  const debtsBySupplier: Record<string, number> = {};
+  for (const row of debts.perSupplier) {
+    debtsBySupplier[row.supplier_id] = row.owed;
+  }
+
   return (
-    <PlaceholderModule
-      title="Proveedores"
-      description="Alta, edición y baja de proveedores en Santa Cruz, Mairana, Cochabamba y otros."
-      bullets={[
-        "CRUD de proveedores (nombre, zona, teléfono)",
-        "Ver deuda pendiente por proveedor",
-        "Acceso rápido a compras y pagos del proveedor",
-      ]}
+    <SuppliersManager
+      suppliers={suppliers}
+      debtsBySupplier={debtsBySupplier}
+      listError={error || debts.error}
     />
   );
 }

@@ -531,6 +531,274 @@ a {
   min-width: 12rem;
 }
 
+/* ---------- Data modules (Sprint 1) ---------- */
+
+.data-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.data-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.debt-total {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  text-align: right;
+}
+
+.debt-total span {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+.debt-total strong {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.debt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 720px) {
+  .debt-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.debt-chip {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font: inherit;
+  color: inherit;
+}
+
+.debt-chip strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.debt-chip.is-active {
+  border-color: var(--accent);
+  background: rgba(196, 92, 38, 0.08);
+}
+
+.data-form {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.05rem 1.15rem;
+  box-shadow: var(--shadow-soft);
+}
+
+.data-form-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.data-form .field,
+.data-stack .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.data-form label,
+.data-stack .field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.data-form input,
+.data-form select,
+.data-form textarea,
+.data-stack .field input,
+.data-stack .field select,
+.data-stack .field textarea {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: #fff;
+  width: 100%;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.form-actions .btn-primary {
+  width: auto;
+  min-width: 9rem;
+  margin-top: 0;
+}
+
+.btn-secondary {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: rgba(26, 46, 31, 0.05);
+}
+
+.list-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.check-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.data-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.data-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+}
+
+.data-card.is-muted {
+  opacity: 0.65;
+}
+
+.data-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.data-card-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.data-card-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.data-card-amount {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.data-card-notes {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.data-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
+.data-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.status-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(26, 46, 31, 0.08);
+  color: var(--ink-soft);
+}
+
+.status-pending_price {
+  background: rgba(184, 134, 11, 0.18);
+  color: #7a5a00;
+}
+
+.status-priced {
+  background: rgba(47, 107, 58, 0.14);
+  color: var(--good);
+}
+
+.status-partially_paid {
+  background: rgba(196, 92, 38, 0.14);
+  color: var(--accent-deep);
+}
+
+.status-paid {
+  background: rgba(47, 107, 58, 0.22);
+  color: var(--good);
+}
+
+.setup-banner a {
+  color: var(--accent-deep);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .btn-primary {
   margin-top: 1.1rem;
   width: 100%;
@@ -587,3 +855,4 @@ a {
     transform: translate(4%, 6%);
   }
 }
+

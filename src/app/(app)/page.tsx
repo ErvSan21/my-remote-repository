@@ -1,40 +1,62 @@
 import { MetricCard } from "@/components/metric-card";
+import { requireAdmin } from "@/lib/auth/guards";
+import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
+import { formatBs } from "@/lib/format";
+import Link from "next/link";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  await requireAdmin();
+  const debts = await getSupplierDebtsAction();
+  const pendingPrice = debts.purchases.filter(
+    (p) => p.status === "pending_price",
+  ).length;
+
   return (
     <>
       <section className="hero-dash">
         <h1>Sistema Pollo</h1>
         <p>
-          Panel de control — deudas, consignación en La Paz/El Alto y pollo
-          disponible. Los números se conectan a Supabase en el próximo sprint.
+          Deudas a proveedores y operación diaria. Sprint 1: proveedores,
+          compras y pagos.
         </p>
       </section>
 
       <section className="metrics-grid" aria-label="Métricas">
         <MetricCard
           label="Deuda proveedores"
-          value="—"
-          hint="Total + por proveedor"
+          value={debts.error ? "—" : formatBs(debts.totalOwed)}
+          hint="Total a todos"
         />
         <MetricCard
-          label="Consignado abierto"
-          value="—"
-          hint="Aves en La Paz / El Alto"
+          label="Proveedores con deuda"
+          value={
+            debts.error
+              ? "—"
+              : String(debts.perSupplier.filter((s) => s.owed > 0).length)
+          }
+          hint="Con saldo > 0"
         />
-        <MetricCard label="Cobrado hoy" value="—" hint="QR + efectivo" />
+        <MetricCard
+          label="Compras sin precio"
+          value={String(pendingPrice)}
+          hint="Negociación pendiente"
+        />
         <MetricCard
           label="Pollo disponible"
           value="—"
-          hint="Inventario actual"
+          hint="Inventario — próximo"
         />
       </section>
 
       <p className="setup-banner">
-        Greenfield: crea el proyecto Supabase, aplica{" "}
-        <code>supabase/migrations/001_initial_schema.sql</code>, copia{" "}
-        <code>.env.local.example</code> → <code>.env.local</code> y despliega en
-        Vercel. Ver README.
+        Atajos:{" "}
+        <Link href="/proveedores">Proveedores</Link>
+        {" · "}
+        <Link href="/compras">Compras</Link>
+        {" · "}
+        <Link href="/pagos-proveedores">Pagos proveedores</Link>
       </p>
     </>
   );

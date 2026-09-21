@@ -1,15 +1,22 @@
-import { PlaceholderModule } from "@/components/placeholder-module";
+import { requireAdmin } from "@/lib/auth/guards";
+import { listSuppliersAction } from "@/app/actions/suppliers";
+import { listPurchasesAction } from "@/app/actions/purchases";
+import { PurchasesManager } from "@/components/purchases/purchases-manager";
 
-export default function ComprasPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ComprasPage() {
+  await requireAdmin();
+  const [suppliersRes, purchasesRes] = await Promise.all([
+    listSuppliersAction(false),
+    listPurchasesAction(),
+  ]);
+
   return (
-    <PlaceholderModule
-      title="Compras"
-      description="Registrar compras de pollo en pie. Puedes cargar la cantidad ahora y el precio después (negociado)."
-      bullets={[
-        "Cantidad de aves obligatoria al crear",
-        "Precio unitario opcional → estado pending_price",
-        "Al fijar precio se calcula deuda automáticamente",
-      ]}
+    <PurchasesManager
+      suppliers={suppliersRes.suppliers}
+      purchases={purchasesRes.purchases}
+      listError={suppliersRes.error || purchasesRes.error}
     />
   );
 }

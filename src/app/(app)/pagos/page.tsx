@@ -1,32 +1,35 @@
 import { PlaceholderModule } from "@/components/placeholder-module";
-import { getAuthContext } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
-export default async function PagosPage() {
-  const auth = await getAuthContext();
-  const isVendedora = auth?.profile.role === "vendedora";
+/**
+ * Pagos de clientes (consignación). Ruta permitida para vendedora.
+ * No muestra deudas de proveedores.
+ */
+export default async function PagosClientesPage() {
+  const auth = await requireAuth();
+  const isVendedora = auth.profile.role === "vendedora";
 
   return (
     <PlaceholderModule
-      title={isVendedora ? "Registrar pago" : "Pagos"}
+      title={isVendedora ? "Registrar cobro" : "Pagos de clientes"}
       description={
         isVendedora
-          ? "Registra pagos con QR o efectivo e indica el monto. No verás deudas globales ni otros módulos sensibles."
-          : "Registrar pagos a proveedores o cobros. La vendedora solo usa esta pantalla (QR o efectivo + monto)."
+          ? "Aquí registrarás cobros a clientes (QR o efectivo + monto). No verás deudas de proveedores ni totales sensibles."
+          : "Cobros a clientes / consignación. Los pagos a proveedores están en Pagos a proveedores."
       }
       bullets={
         isVendedora
           ? [
               "Método: efectivo o QR",
-              "Monto del pago",
-              "El formulario de datos reales llega en el próximo sprint",
+              "Monto del cobro",
+              "Recibo con código — próximo sprint (clientes/consignación)",
             ]
           : [
-              "Método: efectivo o QR",
-              "Pago parcial o total",
-              "Asignar a una compra o dejar a cuenta del proveedor",
-              "Rol vendedora: sin ver totales globales sensibles",
+              "Esta pantalla es para cobros de clientes",
+              "Usa «Pagos a proveedores» para deudas de compra",
+              "Formulario real de cobro + recibo en el próximo sprint",
             ]
       }
     />
