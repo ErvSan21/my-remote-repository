@@ -639,6 +639,81 @@ a {
   border-left: 3px solid var(--accent);
 }
 
+.debt-total.compact {
+  padding: 0.4rem 0.7rem;
+}
+
+.debt-total.compact strong {
+  font-size: 1.05rem;
+}
+
+/* ---------- Skeletons ---------- */
+
+.skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(26, 46, 31, 0.06) 0%,
+    rgba(26, 46, 31, 0.12) 45%,
+    rgba(26, 46, 31, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.skeleton-page-title {
+  height: 1.6rem;
+  width: 9rem;
+}
+
+.skeleton-plus {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 999px;
+}
+
+.skeleton-search {
+  height: 2.6rem;
+  width: 100%;
+  border-radius: 12px;
+}
+
+.skeleton-title {
+  height: 1.05rem;
+  width: 55%;
+}
+
+.skeleton-line {
+  height: 0.75rem;
+  width: 80%;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 .debt-total {
   background: var(--bg-panel);
   border: 1px solid var(--line);

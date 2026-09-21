@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import { upsertSupplierAction } from "@/app/actions/suppliers";
 import type { Supplier } from "@/lib/data-types";
 import { BOLIVIA_DEPARTMENTS, formatBs } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = {
   suppliers: Supplier[];
@@ -44,23 +45,6 @@ export function SuppliersManager({
     });
   }, [suppliers, query]);
 
-  function edit(s: Supplier) {
-    const dept = BOLIVIA_DEPARTMENTS.includes(
-      s.location as (typeof BOLIVIA_DEPARTMENTS)[number],
-    )
-      ? (s.location as string)
-      : "Santa Cruz";
-    setForm({
-      id: s.id,
-      name: s.name,
-      location: dept,
-      phone: s.phone || "",
-      notes: s.notes || "",
-    });
-    setShowForm(true);
-    setFeedback(null);
-  }
-
   function resetForm() {
     setForm(emptyForm);
     setShowForm(false);
@@ -84,38 +68,22 @@ export function SuppliersManager({
 
   return (
     <div className="data-stack">
-      <header className="data-header providers-header">
-        <div>
-          <h2 className="module-title">Proveedores</h2>
-          <p className="module-desc">
-            Nombre, apellido y departamento. Busca por nombre, apellido o
-            celular.
-          </p>
-        </div>
-        {!showForm ? (
-          <button
-            type="button"
-            className="btn-plus"
-            aria-label="Crear proveedor"
-            title="Crear proveedor"
-            onClick={() => {
-              setForm(emptyForm);
-              setShowForm(true);
-              setFeedback(null);
-            }}
-          >
-            +
-          </button>
-        ) : null}
-      </header>
+      <PageHeader
+        title="Proveedores"
+        addLabel="Crear proveedor"
+        showAdd={!showForm}
+        onAdd={() => {
+          setForm(emptyForm);
+          setShowForm(true);
+          setFeedback(null);
+        }}
+      />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
-            {form.id ? "Editar proveedor" : "Crear proveedor"}
-          </h3>
+          <h3 className="data-form-title">Crear proveedor</h3>
           <div className="field">
             <label htmlFor="sup-name">Nombre y apellido</label>
             <input
@@ -151,7 +119,6 @@ export function SuppliersManager({
               <input
                 id="sup-phone"
                 inputMode="tel"
-                placeholder="Ej. 70000000"
                 value={form.phone}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, phone: e.target.value }))
@@ -172,11 +139,7 @@ export function SuppliersManager({
           </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={pending}>
-              {pending
-                ? "Guardando…"
-                : form.id
-                  ? "Guardar cambios"
-                  : "Crear proveedor"}
+              {pending ? "Guardando…" : "Crear proveedor"}
             </button>
             <button
               type="button"
@@ -215,23 +178,11 @@ export function SuppliersManager({
                 <p className="provider-dept">
                   {s.location || "Sin departamento"}
                 </p>
-                {s.phone ? (
-                  <p className="data-card-meta">{s.phone}</p>
-                ) : null}
+                {s.phone ? <p className="data-card-meta">{s.phone}</p> : null}
               </div>
               <p className="data-card-amount">
                 {formatBs(debtsBySupplier[s.id] ?? 0)}
               </p>
-            </div>
-            <div className="data-card-actions">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => edit(s)}
-                disabled={pending}
-              >
-                Editar
-              </button>
             </div>
           </li>
         ))}

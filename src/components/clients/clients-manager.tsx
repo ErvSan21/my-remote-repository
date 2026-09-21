@@ -1,14 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import {
-  setClientActiveAction,
-  upsertClientAction,
-} from "@/app/actions/clients";
-import {
-  createConsignmentAction,
-  updateConsignmentPriceAction,
-} from "@/app/actions/consignments";
+import { upsertClientAction } from "@/app/actions/clients";
+import { createConsignmentAction } from "@/app/actions/consignments";
 import type { Client, Consignment } from "@/lib/data-types";
 import {
   CLIENT_ZONES,
@@ -16,6 +10,7 @@ import {
   formatBs,
   formatDateLaPaz,
 } from "@/lib/format";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Props = {
   clients: Client[];
@@ -27,12 +22,11 @@ type Props = {
 export function ClientsManager({
   clients,
   consignments,
-  availableStock,
   listError,
 }: Props) {
   const [tab, setTab] = useState<"clientes" | "consignacion">("clientes");
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
-    id: "",
     name: "",
     zone: "La Paz",
     phone: "",
@@ -44,7 +38,6 @@ export function ClientsManager({
     unit_price: "",
     notes: "",
   });
-  const [priceEdit, setPriceEdit] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -57,7 +50,6 @@ export function ClientsManager({
     e.preventDefault();
     startTransition(async () => {
       const result = await upsertClientAction({
-        id: form.id || undefined,
         name: form.name,
         zone: form.zone,
         phone: form.phone,
@@ -65,7 +57,8 @@ export function ClientsManager({
       });
       setFeedback(result.message);
       if (result.ok) {
-        setForm({ id: "", name: "", zone: "La Paz", phone: "", notes: "" });
+        setForm({ name: "", zone: "La Paz", phone: "", notes: "" });
+        setShowForm(false);
       }
     });
   }
@@ -75,7 +68,7 @@ export function ClientsManager({
     const priceRaw = consForm.unit_price.trim();
     startTransition(async () => {
       const result = await createConsignmentAction({
-        client_id: consForm.client_id,
+        client_id: consForm.client_id || activeClients[0]?.id || "",
         quantity_birds: Number(consForm.quantity_birds),
         unit_price: priceRaw === "" ? null : Number(priceRaw),
         notes: consForm.notes,
@@ -88,34 +81,41 @@ export function ClientsManager({
           unit_price: "",
           notes: "",
         });
+        setShowForm(false);
       }
     });
   }
 
   return (
     <div className="data-stack">
-      <header className="data-header">
-        <div>
-          <h2 className="module-title">Clientes / Consignación</h2>
-          <p className="module-desc">
-            Clientes en La Paz / El Alto y pollo dejado en consignación. Stock
-            disponible: <strong>{availableStock}</strong> aves.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Clientes"
+        addLabel={tab === "clientes" ? "Crear cliente" : "Nueva consignación"}
+        showAdd={!showForm}
+        onAdd={() => {
+          setShowForm(true);
+          setFeedback(null);
+        }}
+      />
 
       <div className="tab-row">
         <button
           type="button"
           className={`tab-btn ${tab === "clientes" ? "is-active" : ""}`}
-          onClick={() => setTab("clientes")}
+          onClick={() => {
+            setTab("clientes");
+            setShowForm(false);
+          }}
         >
           Clientes
         </button>
         <button
           type="button"
           className={`tab-btn ${tab === "consignacion" ? "is-active" : ""}`}
-          onClick={() => setTab("consignacion")}
+          onClick={() => {
+            setTab("consignacion");
+            setShowForm(false);
+          }}
         >
           Consignación
         </button>
@@ -126,87 +126,69 @@ export function ClientsManager({
 
       {tab === "clientes" ? (
         <>
-          <form className="data-form" onSubmit={onClientSubmit}>
-            <h3 className="data-form-title">
-              {form.id ? "Editar cliente" : "Nuevo cliente"}
-            </h3>
-            <div className="field">
-              <label htmlFor="cl-name">Nombre</label>
-              <input
-                id="cl-name"
-                required
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                disabled={pending}
-              />
-            </div>
-            <div className="field-row">
+          {showForm ? (
+            <form className="data-form" onSubmit={onClientSubmit}>
+              <h3 className="data-form-title">Nuevo cliente</h3>
               <div className="field">
-                <label htmlFor="cl-zone">Zona</label>
-                <select
-                  id="cl-zone"
-                  value={form.zone}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, zone: e.target.value }))
-                  }
-                  disabled={pending}
-                >
-                  {CLIENT_ZONES.map((z) => (
-                    <option key={z} value={z}>
-                      {z}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label htmlFor="cl-phone">Teléfono</label>
+                <label htmlFor="cl-name">Nombre</label>
                 <input
-                  id="cl-phone"
-                  value={form.phone}
+                  id="cl-name"
+                  required
+                  value={form.name}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, phone: e.target.value }))
+                    setForm((f) => ({ ...f, name: e.target.value }))
                   }
                   disabled={pending}
                 />
               </div>
-            </div>
-            <div className="field">
-              <label htmlFor="cl-notes">Notas</label>
-              <textarea
-                id="cl-notes"
-                rows={2}
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                disabled={pending}
-              />
-            </div>
-            <div className="form-actions">
-              <button type="submit" className="btn-primary" disabled={pending}>
-                {form.id ? "Guardar" : "Crear"}
-              </button>
-              {form.id ? (
+              <div className="field-row">
+                <div className="field">
+                  <label htmlFor="cl-zone">Zona</label>
+                  <select
+                    id="cl-zone"
+                    value={form.zone}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, zone: e.target.value }))
+                    }
+                    disabled={pending}
+                  >
+                    {CLIENT_ZONES.map((z) => (
+                      <option key={z} value={z}>
+                        {z}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="cl-phone">Celular</label>
+                  <input
+                    id="cl-phone"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                    disabled={pending}
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button type="submit" className="btn-primary" disabled={pending}>
+                  Crear cliente
+                </button>
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() =>
-                    setForm({
-                      id: "",
-                      name: "",
-                      zone: "La Paz",
-                      phone: "",
-                      notes: "",
-                    })
-                  }
+                  onClick={() => setShowForm(false)}
                 >
                   Cancelar
                 </button>
-              ) : null}
-            </div>
-          </form>
+              </div>
+            </form>
+          ) : null}
 
           <ul className="data-list">
-            {clients.map((c) => (
-              <li key={c.id} className={`data-card ${c.active ? "" : "is-muted"}`}>
+            {activeClients.map((c) => (
+              <li key={c.id} className="data-card">
                 <div className="data-card-top">
                   <div>
                     <p className="data-card-title">{c.name}</p>
@@ -216,117 +198,87 @@ export function ClientsManager({
                     </p>
                   </div>
                 </div>
-                <div className="data-card-actions">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() =>
-                      setForm({
-                        id: c.id,
-                        name: c.name,
-                        zone: c.zone || "Otro",
-                        phone: c.phone || "",
-                        notes: c.notes || "",
-                      })
-                    }
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() =>
-                      startTransition(async () => {
-                        const r = await setClientActiveAction(c.id, !c.active);
-                        setFeedback(r.message);
-                      })
-                    }
-                  >
-                    {c.active ? "Desactivar" : "Reactivar"}
-                  </button>
-                </div>
               </li>
             ))}
-            {clients.length === 0 ? (
+            {activeClients.length === 0 ? (
               <li className="data-empty">No hay clientes.</li>
             ) : null}
           </ul>
         </>
       ) : (
         <>
-          <form className="data-form" onSubmit={onConsSubmit}>
-            <h3 className="data-form-title">Nueva consignación</h3>
-            <div className="field">
-              <label htmlFor="co-client">Cliente</label>
-              <select
-                id="co-client"
-                required
-                value={consForm.client_id || activeClients[0]?.id || ""}
-                onChange={(e) =>
-                  setConsForm((f) => ({ ...f, client_id: e.target.value }))
-                }
-                disabled={pending || activeClients.length === 0}
-              >
-                {activeClients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.zone || "—"})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field-row">
+          {showForm ? (
+            <form className="data-form" onSubmit={onConsSubmit}>
+              <h3 className="data-form-title">Nueva consignación</h3>
               <div className="field">
-                <label htmlFor="co-qty">Cantidad (aves)</label>
-                <input
-                  id="co-qty"
-                  type="number"
-                  min={1}
+                <label htmlFor="co-client">Cliente</label>
+                <select
+                  id="co-client"
                   required
-                  value={consForm.quantity_birds}
+                  value={consForm.client_id || activeClients[0]?.id || ""}
                   onChange={(e) =>
-                    setConsForm((f) => ({
-                      ...f,
-                      quantity_birds: e.target.value,
-                    }))
+                    setConsForm((f) => ({ ...f, client_id: e.target.value }))
                   }
-                  disabled={pending}
-                />
+                  disabled={pending || activeClients.length === 0}
+                >
+                  {activeClients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="field">
-                <label htmlFor="co-price">Precio unit. (opcional)</label>
-                <input
-                  id="co-price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={consForm.unit_price}
-                  onChange={(e) =>
-                    setConsForm((f) => ({ ...f, unit_price: e.target.value }))
-                  }
-                  disabled={pending}
-                />
+              <div className="field-row">
+                <div className="field">
+                  <label htmlFor="co-qty">Cantidad (aves)</label>
+                  <input
+                    id="co-qty"
+                    type="number"
+                    min={1}
+                    required
+                    value={consForm.quantity_birds}
+                    onChange={(e) =>
+                      setConsForm((f) => ({
+                        ...f,
+                        quantity_birds: e.target.value,
+                      }))
+                    }
+                    disabled={pending}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="co-price">Precio unit. (opcional)</label>
+                  <input
+                    id="co-price"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={consForm.unit_price}
+                    onChange={(e) =>
+                      setConsForm((f) => ({ ...f, unit_price: e.target.value }))
+                    }
+                    disabled={pending}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="field">
-              <label htmlFor="co-notes">Notas</label>
-              <textarea
-                id="co-notes"
-                rows={2}
-                value={consForm.notes}
-                onChange={(e) =>
-                  setConsForm((f) => ({ ...f, notes: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </div>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={pending || activeClients.length === 0}
-            >
-              Registrar consignación
-            </button>
-          </form>
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={pending || activeClients.length === 0}
+                >
+                  Registrar
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          ) : null}
 
           <ul className="data-list">
             {consignments.map((c) => (
@@ -345,43 +297,6 @@ export function ClientsManager({
                     {CONSIGNMENT_STATUS_LABEL[c.status] ?? c.status}
                   </span>
                 </div>
-                {c.unit_price == null ? (
-                  <div className="field-row" style={{ marginTop: "0.6rem" }}>
-                    <div className="field">
-                      <label>Fijar precio</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={priceEdit[c.id] ?? ""}
-                        onChange={(e) =>
-                          setPriceEdit((m) => ({
-                            ...m,
-                            [c.id]: e.target.value,
-                          }))
-                        }
-                      />
-                    </div>
-                    <div className="field" style={{ justifyContent: "flex-end" }}>
-                      <label>&nbsp;</label>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() =>
-                          startTransition(async () => {
-                            const r = await updateConsignmentPriceAction({
-                              id: c.id,
-                              unit_price: Number(priceEdit[c.id]),
-                            });
-                            setFeedback(r.message);
-                          })
-                        }
-                      >
-                        Guardar precio
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
               </li>
             ))}
             {consignments.length === 0 ? (

@@ -13,23 +13,16 @@ export default async function InventarioPage() {
 
   return (
     <div className="data-stack">
-      <header className="data-header">
-        <div>
-          <h2 className="module-title">Inventario</h2>
-          <p className="module-desc">
-            Pollo disponible según lotes abiertos (entradas por compra, salidas
-            por consignación).
-          </p>
-        </div>
-        <div className="debt-total">
-          <span>Pollo disponible</span>
-          <strong>{available} aves</strong>
+      <header className="data-header providers-header">
+        <h2 className="module-title">Inventario</h2>
+        <div className="debt-total compact">
+          <span>Disponible</span>
+          <strong>{available}</strong>
         </div>
       </header>
 
       {error ? <p className="module-note">{error}</p> : null}
 
-      <h3 className="data-form-title">Lotes abiertos</h3>
       <ul className="data-list">
         {lots.map((l) => (
           <li key={l.id} className="data-card">
@@ -37,19 +30,18 @@ export default async function InventarioPage() {
               <div>
                 <p className="data-card-title">{l.label || "Lote"}</p>
                 <p className="data-card-meta">
-                  Abierto {formatDateLaPaz(l.opened_at)}
+                  {formatDateLaPaz(l.opened_at)}
                 </p>
               </div>
-              <p className="data-card-amount">{l.quantity_birds} aves</p>
+              <p className="data-card-amount">{l.quantity_birds}</p>
             </div>
           </li>
         ))}
         {lots.length === 0 ? (
-          <li className="data-empty">Sin lotes abiertos. Registra una compra.</li>
+          <li className="data-empty">Sin lotes abiertos.</li>
         ) : null}
       </ul>
 
-      <h3 className="data-form-title">Movimientos recientes</h3>
       <ul className="data-list">
         {movements.map((m) => (
           <li key={m.id} className="data-card">
@@ -58,10 +50,7 @@ export default async function InventarioPage() {
                 <p className="data-card-title">
                   {INVENTORY_REASON_LABEL[m.reason] ?? m.reason}
                 </p>
-                <p className="data-card-meta">
-                  {formatDateLaPaz(m.moved_at)}
-                  {m.notes ? ` · ${m.notes}` : ""}
-                </p>
+                <p className="data-card-meta">{formatDateLaPaz(m.moved_at)}</p>
               </div>
               <p className="data-card-amount">
                 {m.delta_birds > 0 ? "+" : ""}
@@ -70,9 +59,6 @@ export default async function InventarioPage() {
             </div>
           </li>
         ))}
-        {movements.length === 0 ? (
-          <li className="data-empty">Sin movimientos aún.</li>
-        ) : null}
       </ul>
     </div>
   );

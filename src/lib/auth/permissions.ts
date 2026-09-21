@@ -47,12 +47,12 @@ export function navForRole(role: AppRole): NavItem[] {
   });
 }
 
-/** Barra flotante inferior: Inicio, Proveedores, Compras, Cobros, Clientes (sin Stock). */
+/** Barra flotante: Inicio, Compras, Cobros, Clientes, Proveedores (último). */
 export function bottomNavForRole(role: AppRole): NavItem[] {
   const nav = navForRole(role);
   if (role === "vendedora") return nav;
 
-  const mobileHrefs = ["/", "/proveedores", "/compras", "/pagos", "/clientes"];
+  const mobileHrefs = ["/", "/compras", "/pagos", "/clientes", "/proveedores"];
   return mobileHrefs
     .map((href) => nav.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item));

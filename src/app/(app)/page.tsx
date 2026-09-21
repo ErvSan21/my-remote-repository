@@ -66,7 +66,6 @@ export default async function DashboardPage() {
     <>
       <section className="hero-dash">
         <h1>MAC</h1>
-        <p>Resumen operativo — deudas, stock y cobros.</p>
       </section>
 
       <section className="metrics-grid" aria-label="Métricas">
