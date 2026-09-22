@@ -144,8 +144,8 @@ export async function createClientPaymentAction(input: {
       .eq("id", input.consignment_id);
   }
 
-  revalidatePath("/pagos");
-  revalidatePath("/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/clientes");
   revalidatePath("/recibos");
   revalidatePath("/");
   return {
@@ -245,8 +245,8 @@ export async function updateClientPaymentAction(input: {
     await refreshConsignmentStatus(supabase, input.consignment_id);
   }
 
-  revalidatePath("/pagos");
-  revalidatePath("/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/clientes");
   revalidatePath("/recibos");
   revalidatePath("/");
   return { ok: true, message: "Cobro actualizado." };

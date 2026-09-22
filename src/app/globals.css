@@ -211,7 +211,7 @@ a {
   z-index: 30;
   width: min(420px, calc(100% - 1.25rem));
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.2rem;
   padding: 0.45rem 0.4rem;
   background: rgba(247, 250, 244, 0.92);
@@ -975,6 +975,51 @@ button.data-card:focus-visible {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-top: 0.7rem;
+}
+
+.venta-card .venta-pendiente {
+  color: var(--accent-deep);
+}
+
+.venta-pagado {
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: var(--good);
+  white-space: nowrap;
+}
+
+.venta-monto {
+  margin: 0.55rem 0 0;
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.venta-monto-meta {
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.data-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.check-inline-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.check-inline-wrap select {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  background: #fff;
 }
 
 .data-empty {

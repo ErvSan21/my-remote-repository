@@ -46,8 +46,8 @@ export async function upsertClientAction(input: {
     if (error) return { ok: false, message: error.message };
   }
 
-  revalidatePath("/clientes");
-  revalidatePath("/pagos");
+  revalidatePath("/ventas/clientes");
+  revalidatePath("/ventas");
   return {
     ok: true,
     message: input.id ? "Cliente actualizado." : "Cliente creado.",
@@ -65,8 +65,8 @@ export async function setClientActiveAction(
     .update({ active, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/clientes");
-  revalidatePath("/pagos");
+  revalidatePath("/ventas/clientes");
+  revalidatePath("/ventas");
   return {
     ok: true,
     message: active ? "Cliente reactivado." : "Cliente desactivado.",

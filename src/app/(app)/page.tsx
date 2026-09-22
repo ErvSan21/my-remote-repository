@@ -100,9 +100,9 @@ export default async function DashboardPage() {
         {" · "}
         <Link href="/pagos-proveedores">Pagos prov.</Link>
         {" · "}
-        <Link href="/clientes">Clientes</Link>
+        <Link href="/ventas/clientes">Clientes</Link>
         {" · "}
-        <Link href="/pagos">Cobros</Link>
+        <Link href="/ventas">Ventas</Link>
         {" · "}
         <Link href="/inventario">Inventario</Link>
         {" · "}

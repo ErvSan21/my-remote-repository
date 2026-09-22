@@ -24,18 +24,11 @@ export const APP_NAV: NavItem[] = [
     roles: ["admin", "superadmin"],
   },
   {
-    href: "/pagos",
-    label: "Cobros",
-    shortLabel: "Cobros",
+    href: "/ventas",
+    label: "Ventas",
+    shortLabel: "Ventas",
     icon: "cash",
     roles: ["vendedora", "admin", "superadmin"],
-  },
-  {
-    href: "/clientes",
-    label: "Clientes",
-    shortLabel: "Clientes",
-    icon: "clients",
-    roles: ["admin", "superadmin"],
   },
   {
     href: "/inventario",

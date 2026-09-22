@@ -59,7 +59,18 @@ export type Consignment = {
   status: import("@/lib/types").ConsignmentStatus;
   left_at: string;
   notes: string | null;
-  clients?: { name: string; zone: string | null } | null;
+  clients?: {
+    name: string;
+    zone: string | null;
+    phone: string | null;
+  } | null;
+};
+
+/** Venta = consignación + montos cobrados / pendiente. */
+export type VentaRow = Consignment & {
+  paid_amount: number;
+  pending_amount: number;
+  is_paid: boolean;
 };
 
 export type ClientPayment = {

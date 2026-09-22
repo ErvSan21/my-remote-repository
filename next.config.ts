@@ -10,6 +10,16 @@ const nextConfig: NextConfig = {
         destination: "/proveedores/compras",
         permanent: false,
       },
+      {
+        source: "/pagos",
+        destination: "/ventas",
+        permanent: false,
+      },
+      {
+        source: "/clientes",
+        destination: "/ventas/clientes",
+        permanent: false,
+      },
     ];
   },
 };

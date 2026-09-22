@@ -22,8 +22,8 @@ export default async function ReciboPage({ params }: Props) {
   return (
     <div className="receipt-page">
       <div className="receipt-actions no-print">
-        <Link href="/pagos" className="btn-secondary">
-          Volver a cobros
+        <Link href="/ventas" className="btn-secondary">
+          Volver a ventas
         </Link>
         <PrintButton />
       </div>

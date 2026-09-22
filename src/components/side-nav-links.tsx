@@ -19,6 +19,16 @@ function isActiveHref(pathname: string, href: string) {
       pathname.startsWith("/compras/")
     );
   }
+  if (href === "/ventas") {
+    return (
+      pathname === "/ventas" ||
+      pathname.startsWith("/ventas/") ||
+      pathname === "/pagos" ||
+      pathname.startsWith("/pagos/") ||
+      pathname === "/clientes" ||
+      pathname.startsWith("/clientes/")
+    );
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

@@ -2,7 +2,12 @@ import type { AppRole, NavItem } from "@/lib/types";
 import { APP_NAV } from "@/lib/nav";
 
 function isVendedoraPath(path: string): boolean {
-  if (path === "/pagos") return true;
+  if (path === "/ventas" || path.startsWith("/ventas/")) {
+    // Vendedora: listado de ventas / cobros; no gestión de clientes
+    if (path.startsWith("/ventas/clientes")) return false;
+    return true;
+  }
+  if (path === "/pagos" || path.startsWith("/pagos/")) return true; // redirect legacy
   if (path.startsWith("/recibos/")) return true;
   return false;
 }
@@ -23,16 +28,16 @@ export function canAccessPath(pathname: string, role: AppRole): boolean {
 }
 
 export function homePathForRole(role: AppRole): string {
-  return role === "vendedora" ? "/pagos" : "/";
+  return role === "vendedora" ? "/ventas" : "/";
 }
 
 export function navForRole(role: AppRole): NavItem[] {
   if (role === "vendedora") {
     return [
       {
-        href: "/pagos",
-        label: "Registrar cobro",
-        shortLabel: "Cobros",
+        href: "/ventas",
+        label: "Ventas",
+        shortLabel: "Ventas",
         icon: "cash",
         roles: ["vendedora", "admin", "superadmin"],
       },
@@ -47,12 +52,12 @@ export function navForRole(role: AppRole): NavItem[] {
   });
 }
 
-/** Barra flotante: Inicio, Cobros, Clientes, Proveedores (último; incluye Compras). */
+/** Barra flotante: Inicio, Ventas (incluye Clientes), Proveedores (último). */
 export function bottomNavForRole(role: AppRole): NavItem[] {
   const nav = navForRole(role);
   if (role === "vendedora") return nav;
 
-  const mobileHrefs = ["/", "/pagos", "/clientes", "/proveedores"];
+  const mobileHrefs = ["/", "/ventas", "/proveedores"];
   return mobileHrefs
     .map((href) => nav.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item));

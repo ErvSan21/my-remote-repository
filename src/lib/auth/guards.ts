@@ -11,7 +11,7 @@ export async function requireAuth(): Promise<AuthContext> {
 export async function requireAdmin(): Promise<AuthContext> {
   const auth = await requireAuth();
   if (auth.profile.role !== "admin" && auth.profile.role !== "superadmin") {
-    redirect("/pagos");
+    redirect("/ventas");
   }
   return auth;
 }
