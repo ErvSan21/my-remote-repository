@@ -6,6 +6,15 @@ export function formatBs(amount: number | null | undefined): string {
   })}`;
 }
 
+/** Monto solo dígitos (sin “Bs”), es-BO. */
+export function formatAmountPlain(amount: number | null | undefined): string {
+  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  return Number(amount).toLocaleString("es-BO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function formatDateLaPaz(isoDate: string | null | undefined): string {
   if (!isoDate) return "—";
   // date-only strings: show as-is in DD/MM/YYYY-ish via es-BO
@@ -15,6 +24,20 @@ export function formatDateLaPaz(isoDate: string | null | undefined): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+}
+
+export function formatDateTimeLaPaz(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleString("es-BO", {
+    timeZone: "America/La_Paz",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 

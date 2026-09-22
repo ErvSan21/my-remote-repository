@@ -1008,11 +1008,39 @@ button.data-card:focus-visible {
   color: var(--accent-deep);
 }
 
+.venta-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
 .venta-pagado {
   font-size: 0.85rem;
   font-weight: 750;
   color: var(--good);
   white-space: nowrap;
+}
+
+.venta-credito {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent-deep);
+  white-space: nowrap;
+}
+
+.venta-amount-plain {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 650;
+  color: var(--accent-deep);
+  letter-spacing: -0.02em;
+}
+
+.venta-amount-plain.is-paid {
+  color: var(--ink);
 }
 
 .venta-monto {
@@ -1025,6 +1053,49 @@ button.data-card:focus-visible {
   font-weight: 500;
   color: var(--ink-soft);
   font-size: 0.8rem;
+}
+
+.venta-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.venta-date-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.venta-date-filters .field {
+  margin-top: 0;
+}
+
+.venta-clear-dates {
+  align-self: flex-start;
+}
+
+.venta-pay-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.venta-pay-item {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.venta-pay-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.venta-detail-meta {
+  padding-bottom: 0.85rem;
 }
 
 .data-form-stack {

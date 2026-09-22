@@ -4,7 +4,12 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { removeStockForConsignment } from "@/lib/inventory";
-import type { ActionResult, Consignment, VentaRow } from "@/lib/data-types";
+import type {
+  ActionResult,
+  Consignment,
+  VentaPayment,
+  VentaRow,
+} from "@/lib/data-types";
 import type { ConsignmentStatus, PaymentMethod } from "@/lib/types";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
 
@@ -15,21 +20,53 @@ function revalidateVentas() {
   revalidatePath("/");
 }
 
+function profileDisplay(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as {
+    email?: string | null;
+    username?: string | null;
+    full_name?: string | null;
+  };
+  return {
+    email: p.email ?? null,
+    username: p.username ?? null,
+    full_name: p.full_name ?? null,
+  };
+}
+
 function buildVentaRows(
   consignments: Consignment[],
-  payments: { consignment_id: string | null; amount: number }[],
+  payments: Array<{
+    id: string;
+    consignment_id: string | null;
+    amount: number;
+    method: import("@/lib/types").PaymentMethod;
+    paid_at: string;
+    recorded_by: string | null;
+    recorder?: unknown;
+  }>,
 ): VentaRow[] {
-  const paidByCons = new Map<string, number>();
+  const paymentsByCons = new Map<string, VentaPayment[]>();
   for (const p of payments) {
     if (!p.consignment_id) continue;
-    paidByCons.set(
-      p.consignment_id,
-      (paidByCons.get(p.consignment_id) ?? 0) + Number(p.amount),
-    );
+    const row: VentaPayment = {
+      id: p.id,
+      amount: Number(p.amount),
+      method: p.method,
+      paid_at: p.paid_at,
+      recorded_by: p.recorded_by,
+      recorder: profileDisplay(p.recorder),
+    };
+    const list = paymentsByCons.get(p.consignment_id) ?? [];
+    list.push(row);
+    paymentsByCons.set(p.consignment_id, list);
   }
 
   return consignments.map((c) => {
-    const paid = paidByCons.get(c.id) ?? 0;
+    const salePayments = (paymentsByCons.get(c.id) ?? []).sort((a, b) =>
+      a.paid_at < b.paid_at ? 1 : -1,
+    );
+    const paid = salePayments.reduce((s, p) => s + p.amount, 0);
     const total = c.total_amount == null ? null : Number(c.total_amount);
     const pending =
       total == null ? Math.max(0, 0 - paid) : Math.max(0, total - paid);
@@ -37,9 +74,11 @@ function buildVentaRows(
       c.status === "closed" || (total != null && pending <= 0.001 && total > 0);
     return {
       ...c,
+      creator: profileDisplay(c.creator),
       paid_amount: paid,
       pending_amount: is_paid ? 0 : pending,
       is_paid: Boolean(is_paid && total != null && total > 0),
+      payments: salePayments,
     };
   });
 }
@@ -50,28 +89,72 @@ export async function listVentasAction(): Promise<{
 }> {
   await requireAuth();
   const supabase = await createClient();
-  const [consRes, payRes] = await Promise.all([
-    supabase
+
+  const consSelectFull =
+    "*, clients(name, zone, phone), creator:profiles!consignments_created_by_fkey(email, username, full_name)";
+  const consSelectBasic = "*, clients(name, zone, phone)";
+  const paySelectFull =
+    "id, consignment_id, amount, method, paid_at, recorded_by, recorder:profiles!client_payments_recorded_by_fkey(email, username, full_name)";
+  const paySelectBasic =
+    "id, consignment_id, amount, method, paid_at, recorded_by";
+
+  let consData: unknown[] | null = null;
+  let consError: string | null = null;
+  {
+    const full = await supabase
       .from("consignments")
-      .select("*, clients(name, zone, phone)")
-      .order("left_at", { ascending: false }),
-    supabase.from("client_payments").select("consignment_id, amount"),
-  ]);
-
-  if (consRes.error) {
-    return { ventas: [], error: consRes.error.message };
+      .select(consSelectFull)
+      .order("created_at", { ascending: false });
+    if (!full.error) {
+      consData = full.data ?? [];
+    } else {
+      const basic = await supabase
+        .from("consignments")
+        .select(consSelectBasic)
+        .order("created_at", { ascending: false });
+      if (basic.error) consError = basic.error.message;
+      else consData = basic.data ?? [];
+    }
   }
-  if (payRes.error) {
-    return { ventas: [], error: payRes.error.message };
+
+  let payData: Array<Record<string, unknown>> | null = null;
+  let payError: string | null = null;
+  {
+    const full = await supabase
+      .from("client_payments")
+      .select(paySelectFull)
+      .order("paid_at", { ascending: false });
+    if (!full.error) {
+      payData = (full.data ?? []) as Array<Record<string, unknown>>;
+    } else {
+      const basic = await supabase
+        .from("client_payments")
+        .select(paySelectBasic)
+        .order("paid_at", { ascending: false });
+      if (basic.error) payError = basic.error.message;
+      else payData = (basic.data ?? []) as Array<Record<string, unknown>>;
+    }
   }
 
-  const payments = (payRes.data ?? []).map((p) => ({
+  if (consError) {
+    return { ventas: [], error: consError };
+  }
+  if (payError) {
+    return { ventas: [], error: payError };
+  }
+
+  const payments = (payData ?? []).map((p) => ({
+    id: p.id as string,
     consignment_id: (p.consignment_id as string | null) ?? null,
     amount: Number(p.amount),
+    method: p.method as import("@/lib/types").PaymentMethod,
+    paid_at: p.paid_at as string,
+    recorded_by: (p.recorded_by as string | null) ?? null,
+    recorder: p.recorder ?? null,
   }));
 
   return {
-    ventas: buildVentaRows((consRes.data ?? []) as Consignment[], payments),
+    ventas: buildVentaRows((consData ?? []) as Consignment[], payments),
     error: null,
   };
 }

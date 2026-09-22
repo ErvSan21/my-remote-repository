@@ -7,8 +7,14 @@ import {
   updateConsignmentAction,
 } from "@/app/actions/consignments";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
-import type { Client, VentaRow } from "@/lib/data-types";
-import { formatBs, formatDateLaPaz } from "@/lib/format";
+import type { Client, ProfileRef, VentaRow } from "@/lib/data-types";
+import {
+  PAYMENT_METHOD_LABEL,
+  formatAmountPlain,
+  formatBs,
+  formatDateLaPaz,
+  formatDateTimeLaPaz,
+} from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { VentasAreaTabs } from "@/components/ventas/ventas-area-tabs";
@@ -31,6 +37,21 @@ const emptyForm = {
   pay_method: "cash" as PaymentMethod,
 };
 
+function normalize(value: string | null | undefined) {
+  return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
+
+function dateKeyLaPaz(iso: string | null | undefined) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-CA", {
+    timeZone: "America/La_Paz",
+  });
+}
+
+function personEmail(p?: ProfileRef | null) {
+  return p?.email || p?.username || p?.full_name || "—";
+}
+
 export function VentasManager({
   ventas,
   clients,
@@ -49,6 +70,9 @@ export function VentasManager({
   const [cobroMethod, setCobroMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const editing = Boolean(form.id);
 
   const editingVenta = useMemo(
@@ -73,6 +97,22 @@ export function VentasManager({
     hasValidPrice &&
     hasValidQty &&
     !pending;
+
+  const visible = useMemo(() => {
+    const q = normalize(query.trim());
+    return ventas.filter((v) => {
+      if (q) {
+        const haystack = normalize(
+          `${v.clients?.name ?? ""} ${v.clients?.phone ?? ""}`,
+        );
+        if (!haystack.includes(q)) return false;
+      }
+      const saleDay = dateKeyLaPaz(v.created_at);
+      if (dateFrom && saleDay < dateFrom) return false;
+      if (dateTo && saleDay > dateTo) return false;
+      return true;
+    });
+  }, [ventas, query, dateFrom, dateTo]);
 
   function resetForm() {
     setForm({
@@ -104,7 +144,9 @@ export function VentasManager({
       pay_method: "cash",
     });
     setCobroAmount(
-      v.pending_amount > 0 ? String(Math.round(v.pending_amount * 100) / 100) : "",
+      v.pending_amount > 0
+        ? String(Math.round(v.pending_amount * 100) / 100)
+        : "",
     );
     setShowForm(true);
     setFeedback(null);
@@ -156,7 +198,7 @@ export function VentasManager({
     });
   }
 
-  function onCobro(e: FormEvent) {
+  function onPagar(e: FormEvent) {
     e.preventDefault();
     if (!editingVenta) return;
     startTransition(async () => {
@@ -194,6 +236,26 @@ export function VentasManager({
 
       {showForm ? (
         <div className="data-form-stack">
+          {editing && editingVenta ? (
+            <div className="data-form venta-detail-meta">
+              <p className="data-card-title">
+                {editingVenta.clients?.name ?? "Cliente"}
+              </p>
+              <p className="data-card-meta">
+                Registrado: {formatDateTimeLaPaz(editingVenta.created_at)}
+              </p>
+              <p className="data-card-meta">
+                Por: {personEmail(editingVenta.creator)}
+              </p>
+              <p className="data-card-meta">
+                {editingVenta.clients?.phone || "Sin celular"}
+                {editingVenta.clients?.zone
+                  ? ` · ${editingVenta.clients.zone}`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
+
           {canCreate ? (
             <form className="data-form" onSubmit={onSubmit}>
               <h3 className="data-form-title">
@@ -323,15 +385,40 @@ export function VentasManager({
                   Cancelar
                 </button>
               </div>
-              {feedback && !editingVenta?.pending_amount ? (
+              {feedback && !(editingVenta && editingVenta.pending_amount > 0) ? (
                 <p className="login-hint">{feedback}</p>
               ) : null}
             </form>
           ) : null}
 
+          {editing && editingVenta ? (
+            <div className="data-form">
+              <h3 className="data-form-title">Pagos</h3>
+              <ul className="venta-pay-list">
+                {editingVenta.payments.map((p) => (
+                  <li key={p.id} className="venta-pay-item">
+                    <div>
+                      <p className="data-card-title">{formatBs(p.amount)}</p>
+                      <p className="data-card-meta">
+                        {formatDateTimeLaPaz(p.paid_at)} ·{" "}
+                        {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
+                      </p>
+                      <p className="data-card-meta">
+                        Por: {personEmail(p.recorder)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+                {editingVenta.payments.length === 0 ? (
+                  <li className="data-empty">Sin pagos registrados.</li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+
           {editing && editingVenta && editingVenta.pending_amount > 0.001 ? (
-            <form className="data-form" onSubmit={onCobro}>
-              <h3 className="data-form-title">Registrar cobro</h3>
+            <form className="data-form" onSubmit={onPagar}>
+              <h3 className="data-form-title">Pagar</h3>
               <p className="data-card-meta">
                 Pendiente: {formatBs(editingVenta.pending_amount)}
               </p>
@@ -367,26 +454,23 @@ export function VentasManager({
               </div>
               <div className="form-actions">
                 <button type="submit" className="btn-primary" disabled={pending}>
-                  {pending ? "Registrando…" : "Cobrar"}
+                  {pending ? "Registrando…" : "Pagar"}
                 </button>
-                {!canCreate ? (
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={resetForm}
-                    disabled={pending}
-                  >
-                    Cancelar
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={resetForm}
+                  disabled={pending}
+                >
+                  Cancelar
+                </button>
               </div>
               {feedback ? <p className="login-hint">{feedback}</p> : null}
             </form>
           ) : null}
 
           {editing && !canCreate && editingVenta?.is_paid ? (
-            <div className="data-form">
-              <p className="login-hint">Esta venta está pagada.</p>
+            <div className="form-actions">
               <button
                 type="button"
                 className="btn-secondary"
@@ -399,51 +483,106 @@ export function VentasManager({
         </div>
       ) : null}
 
-      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
-
-      <ul className="data-list">
-        {ventas.map((v) => {
-          const name = v.clients?.name ?? "Cliente";
-          const direccion = v.clients?.zone || "Sin dirección";
-          const phone = v.clients?.phone || "Sin celular";
-          return (
-            <li key={v.id}>
+      {!showForm ? (
+        <>
+          <div className="venta-filters">
+            <div className="search-bar">
+              <label htmlFor="ve-search" className="sr-only">
+                Buscar
+              </label>
+              <input
+                id="ve-search"
+                type="search"
+                placeholder="Buscar por nombre o celular…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className="venta-date-filters">
+              <div className="field">
+                <label htmlFor="ve-desde">Desde</label>
+                <input
+                  id="ve-desde"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="ve-hasta">Hasta</label>
+                <input
+                  id="ve-hasta"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+            </div>
+            {dateFrom || dateTo ? (
               <button
                 type="button"
-                className="data-card venta-card"
-                onClick={() => openEdit(v)}
+                className="btn-secondary venta-clear-dates"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
               >
-                <div className="data-card-top">
-                  <div>
-                    <p className="data-card-title">{name}</p>
-                    <p className="data-card-meta">{direccion}</p>
-                    <p className="data-card-meta">{phone}</p>
-                  </div>
-                  {v.is_paid ? (
-                    <span className="venta-pagado">Pagado</span>
-                  ) : (
-                    <p className="data-card-amount venta-pendiente">
-                      {formatBs(
-                        v.total_amount == null ? null : v.pending_amount,
-                      )}
-                    </p>
-                  )}
-                </div>
-                <p className="venta-monto">
-                  Monto: {formatBs(v.total_amount)}
-                  <span className="venta-monto-meta">
-                    {" · "}
-                    {formatDateLaPaz(v.left_at)} · {v.quantity_birds} aves
-                  </span>
-                </p>
+                Limpiar fechas
               </button>
-            </li>
-          );
-        })}
-        {ventas.length === 0 ? (
-          <li className="data-empty">No hay ventas todavía.</li>
-        ) : null}
-      </ul>
+            ) : null}
+          </div>
+
+          <ul className="data-list">
+            {visible.map((v) => {
+              const name = v.clients?.name ?? "Cliente";
+              const phone = v.clients?.phone || "Sin celular";
+              const amountShown = v.is_paid
+                ? v.total_amount
+                : v.total_amount == null
+                  ? null
+                  : v.pending_amount;
+              return (
+                <li key={v.id}>
+                  <button
+                    type="button"
+                    className="data-card venta-card"
+                    onClick={() => openEdit(v)}
+                  >
+                    <div className="data-card-top">
+                      <div>
+                        <p className="data-card-title">{name}</p>
+                        <p className="data-card-meta">
+                          {formatDateLaPaz(v.created_at)}
+                        </p>
+                        <p className="data-card-meta">{phone}</p>
+                      </div>
+                      <div className="venta-card-right">
+                        {v.is_paid ? (
+                          <span className="venta-pagado">Pagado</span>
+                        ) : (
+                          <span className="venta-credito">Pendiente</span>
+                        )}
+                        <p
+                          className={`venta-amount-plain${v.is_paid ? " is-paid" : ""}`}
+                        >
+                          {formatAmountPlain(amountShown)}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+            {visible.length === 0 ? (
+              <li className="data-empty">
+                {ventas.length === 0
+                  ? "No hay ventas todavía."
+                  : "Ninguna venta coincide con la búsqueda."}
+              </li>
+            ) : null}
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }

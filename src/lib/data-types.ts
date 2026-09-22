@@ -58,12 +58,30 @@ export type Consignment = {
   total_amount: number | null;
   status: import("@/lib/types").ConsignmentStatus;
   left_at: string;
+  created_at: string;
+  created_by: string | null;
   notes: string | null;
   clients?: {
     name: string;
     zone: string | null;
     phone: string | null;
   } | null;
+  creator?: ProfileRef | null;
+};
+
+export type ProfileRef = {
+  email: string | null;
+  username: string | null;
+  full_name: string | null;
+};
+
+export type VentaPayment = {
+  id: string;
+  amount: number;
+  method: import("@/lib/types").PaymentMethod;
+  paid_at: string;
+  recorded_by: string | null;
+  recorder?: ProfileRef | null;
 };
 
 /** Venta = consignación + montos cobrados / pendiente. */
@@ -71,6 +89,7 @@ export type VentaRow = Consignment & {
   paid_amount: number;
   pending_amount: number;
   is_paid: boolean;
+  payments: VentaPayment[];
 };
 
 export type ClientPayment = {
@@ -81,8 +100,10 @@ export type ClientPayment = {
   method: import("@/lib/types").PaymentMethod;
   paid_at: string;
   notes: string | null;
+  recorded_by?: string | null;
   clients?: { name: string } | null;
   receipts?: { id: string; code: string } | { id: string; code: string }[] | null;
+  recorder?: ProfileRef | null;
 };
 
 export type InventoryMovement = {
