@@ -15,7 +15,7 @@ import { createClientPaymentAction } from "@/app/actions/client-payments";
 
 function revalidateVentas(ventaId?: string) {
   revalidatePath("/ventas");
-  revalidatePath("/ventas/clientes");
+  revalidatePath("/clientes");
   revalidatePath("/inventario");
   revalidatePath("/");
   if (ventaId) {
@@ -87,67 +87,16 @@ function buildVentaRows(
   });
 }
 
-export async function listVentasAction(): Promise<{
-  ventas: VentaRow[];
-  error: string | null;
-}> {
-  await requireAuth();
-  const supabase = await createClient();
+const CONS_COLS =
+  "id, client_id, quantity_birds, unit_price, total_amount, status, left_at, created_at, created_by, sale_number, notes";
+const CONS_SELECT_FULL = `${CONS_COLS}, clients(name, zone, phone), creator:profiles!consignments_created_by_fkey(email, username, full_name)`;
+const CONS_SELECT_BASIC = `${CONS_COLS}, clients(name, zone, phone)`;
+const PAY_SELECT_LIST =
+  "id, consignment_id, amount, method, paid_at, recorded_by";
+const PAY_SELECT_DETAIL = `${PAY_SELECT_LIST}, recorder:profiles!client_payments_recorded_by_fkey(email, username, full_name)`;
 
-  const consSelectFull =
-    "*, clients(name, zone, phone), creator:profiles!consignments_created_by_fkey(email, username, full_name)";
-  const consSelectBasic = "*, clients(name, zone, phone)";
-  const paySelectFull =
-    "id, consignment_id, amount, method, paid_at, recorded_by, recorder:profiles!client_payments_recorded_by_fkey(email, username, full_name)";
-  const paySelectBasic =
-    "id, consignment_id, amount, method, paid_at, recorded_by";
-
-  let consData: unknown[] | null = null;
-  let consError: string | null = null;
-  {
-    const full = await supabase
-      .from("consignments")
-      .select(consSelectFull)
-      .order("created_at", { ascending: false });
-    if (!full.error) {
-      consData = full.data ?? [];
-    } else {
-      const basic = await supabase
-        .from("consignments")
-        .select(consSelectBasic)
-        .order("created_at", { ascending: false });
-      if (basic.error) consError = basic.error.message;
-      else consData = basic.data ?? [];
-    }
-  }
-
-  let payData: Array<Record<string, unknown>> | null = null;
-  let payError: string | null = null;
-  {
-    const full = await supabase
-      .from("client_payments")
-      .select(paySelectFull)
-      .order("paid_at", { ascending: false });
-    if (!full.error) {
-      payData = (full.data ?? []) as Array<Record<string, unknown>>;
-    } else {
-      const basic = await supabase
-        .from("client_payments")
-        .select(paySelectBasic)
-        .order("paid_at", { ascending: false });
-      if (basic.error) payError = basic.error.message;
-      else payData = (basic.data ?? []) as Array<Record<string, unknown>>;
-    }
-  }
-
-  if (consError) {
-    return { ventas: [], error: consError };
-  }
-  if (payError) {
-    return { ventas: [], error: payError };
-  }
-
-  const payments = (payData ?? []).map((p) => ({
+function mapPaymentRows(payData: Array<Record<string, unknown>>) {
+  return payData.map((p) => ({
     id: p.id as string,
     consignment_id: (p.consignment_id as string | null) ?? null,
     amount: Number(p.amount),
@@ -156,9 +105,53 @@ export async function listVentasAction(): Promise<{
     recorded_by: (p.recorded_by as string | null) ?? null,
     recorder: p.recorder ?? null,
   }));
+}
+
+export async function listVentasAction(): Promise<{
+  ventas: VentaRow[];
+  error: string | null;
+}> {
+  await requireAuth();
+  const supabase = await createClient();
+
+  // List view needs amounts, not payment recorder profiles.
+  const [consJoined, payRes] = await Promise.all([
+    supabase
+      .from("consignments")
+      .select(CONS_SELECT_BASIC)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("client_payments")
+      .select(PAY_SELECT_LIST)
+      .not("consignment_id", "is", null)
+      .order("paid_at", { ascending: false }),
+  ]);
+
+  let consData: unknown[] | null = consJoined.data as unknown[] | null;
+  let consError = consJoined.error?.message ?? null;
+
+  // If join fails (schema), retry consignments without client join once.
+  if (consJoined.error) {
+    const plain = await supabase
+      .from("consignments")
+      .select(CONS_COLS)
+      .order("created_at", { ascending: false });
+    consData = plain.data as unknown[] | null;
+    consError = plain.error?.message ?? null;
+  }
+
+  if (consError) {
+    return { ventas: [], error: consError };
+  }
+  if (payRes.error) {
+    return { ventas: [], error: payRes.error.message };
+  }
 
   return {
-    ventas: buildVentaRows((consData ?? []) as Consignment[], payments),
+    ventas: buildVentaRows(
+      (consData ?? []) as Consignment[],
+      mapPaymentRows((payRes.data ?? []) as Array<Record<string, unknown>>),
+    ),
     error: null,
   };
 }
@@ -170,11 +163,55 @@ export async function getVentaAction(id: string): Promise<{
   await requireAuth();
   if (!id) return { venta: null, error: "Venta inválida." };
 
-  const { ventas, error } = await listVentasAction();
-  if (error) return { venta: null, error };
-  const venta = ventas.find((v) => v.id === id) ?? null;
-  if (!venta) return { venta: null, error: "Venta no encontrada." };
-  return { venta, error: null };
+  const supabase = await createClient();
+
+  const [consFull, payFull] = await Promise.all([
+    supabase
+      .from("consignments")
+      .select(CONS_SELECT_FULL)
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("client_payments")
+      .select(PAY_SELECT_DETAIL)
+      .eq("consignment_id", id)
+      .order("paid_at", { ascending: false }),
+  ]);
+
+  let consRow: unknown = consFull.data;
+  let consError = consFull.error?.message ?? null;
+  if (consFull.error) {
+    const basic = await supabase
+      .from("consignments")
+      .select(CONS_SELECT_BASIC)
+      .eq("id", id)
+      .maybeSingle();
+    consRow = basic.data;
+    consError = basic.error?.message ?? null;
+  }
+
+  let payData: Array<Record<string, unknown>> =
+    (payFull.data as Array<Record<string, unknown>> | null) ?? [];
+  let payError = payFull.error?.message ?? null;
+  if (payFull.error) {
+    const basicPay = await supabase
+      .from("client_payments")
+      .select(PAY_SELECT_LIST)
+      .eq("consignment_id", id)
+      .order("paid_at", { ascending: false });
+    payData = (basicPay.data as Array<Record<string, unknown>> | null) ?? [];
+    payError = basicPay.error?.message ?? null;
+  }
+
+  if (consError) return { venta: null, error: consError };
+  if (!consRow) return { venta: null, error: "Venta no encontrada." };
+  if (payError) return { venta: null, error: payError };
+
+  const rows = buildVentaRows(
+    [consRow as Consignment],
+    mapPaymentRows(payData),
+  );
+  return { venta: rows[0] ?? null, error: null };
 }
 
 export async function listConsignmentsAction(): Promise<{

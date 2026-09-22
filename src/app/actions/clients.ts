@@ -11,7 +11,10 @@ export async function listClientsAction(includeInactive = false): Promise<{
 }> {
   await requireAuth();
   const supabase = await createClient();
-  let query = supabase.from("clients").select("*").order("name");
+  let query = supabase
+    .from("clients")
+    .select("id, name, zone, phone, notes, active, created_at, updated_at")
+    .order("name");
   if (!includeInactive) query = query.eq("active", true);
   const { data, error } = await query;
   if (error) return { clients: [], error: error.message };
@@ -46,7 +49,7 @@ export async function upsertClientAction(input: {
     if (error) return { ok: false, message: error.message };
   }
 
-  revalidatePath("/ventas/clientes");
+  revalidatePath("/clientes");
   revalidatePath("/ventas");
   return {
     ok: true,
@@ -65,7 +68,7 @@ export async function setClientActiveAction(
     .update({ active, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/ventas/clientes");
+  revalidatePath("/clientes");
   revalidatePath("/ventas");
   return {
     ok: true,

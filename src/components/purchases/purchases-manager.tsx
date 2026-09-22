@@ -10,7 +10,6 @@ import {
   formatDateLaPaz,
 } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
-import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
 type Props = {
   suppliers: Supplier[];
@@ -133,8 +132,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
           setFeedback(null);
         }}
       />
-
-      <ProveedoresAreaTabs />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
@@ -291,7 +288,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
             {visible.map((p) => (
               <li key={p.id}>
                 <Link
-                  href={`/proveedores/compras/${p.id}`}
+                  href={`/compras/${p.id}`}
                   className="data-card"
                 >
                   <div className="data-card-top">

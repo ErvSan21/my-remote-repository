@@ -6,18 +6,28 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/compras",
-        destination: "/proveedores/compras",
-        permanent: false,
-      },
-      {
         source: "/pagos",
         destination: "/ventas",
         permanent: false,
       },
       {
-        source: "/clientes",
-        destination: "/ventas/clientes",
+        source: "/ventas/clientes",
+        destination: "/clientes",
+        permanent: false,
+      },
+      {
+        source: "/proveedores/compras",
+        destination: "/compras",
+        permanent: false,
+      },
+      {
+        source: "/proveedores/compras/:id",
+        destination: "/compras/:id",
+        permanent: false,
+      },
+      {
+        source: "/proveedores/compras/:id/editar",
+        destination: "/compras/:id/editar",
         permanent: false,
       },
     ];

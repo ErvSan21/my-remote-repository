@@ -33,12 +33,12 @@ function weekStartLaPaz() {
 export default async function DashboardPage() {
   await requireAdmin();
   const supabase = await createClient();
-  const debts = await getSupplierDebtsAction();
-  const available = await getPolloDisponible();
   const { start, end } = dayBoundsLaPaz();
   const weekFrom = weekStartLaPaz();
 
-  const [todayPays, weekPays] = await Promise.all([
+  const [debts, available, todayPays, weekPays] = await Promise.all([
+    getSupplierDebtsAction(),
+    getPolloDisponible(),
     supabase
       .from("client_payments")
       .select("amount")
@@ -96,11 +96,11 @@ export default async function DashboardPage() {
         {" · "}
         <Link href="/proveedores">Proveedores</Link>
         {" · "}
-        <Link href="/proveedores/compras">Compras</Link>
+        <Link href="/compras">Compras</Link>
         {" · "}
         <Link href="/pagos-proveedores">Pagos prov.</Link>
         {" · "}
-        <Link href="/ventas/clientes">Clientes</Link>
+        <Link href="/clientes">Clientes</Link>
         {" · "}
         <Link href="/ventas">Ventas</Link>
         {" · "}

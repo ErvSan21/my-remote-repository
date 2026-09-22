@@ -5,7 +5,6 @@ import type { Supplier } from "@/lib/data-types";
 import { formatBs } from "@/lib/format";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
-import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
 type Props = {
   supplier: Supplier;
@@ -16,8 +15,6 @@ type Props = {
 export function ProveedorDetail({ supplier, debt, canEdit }: Props) {
   return (
     <div className="data-stack">
-      <ProveedoresAreaTabs />
-
       <header className="venta-detail-header">
         <div className="venta-detail-title-row">
           <Link

@@ -11,22 +11,23 @@ type Props = {
 
 function isActiveHref(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
-  if (href === "/proveedores") {
-    return (
-      pathname === "/proveedores" ||
-      pathname.startsWith("/proveedores/") ||
-      pathname === "/compras" ||
-      pathname.startsWith("/compras/")
-    );
-  }
   if (href === "/ventas") {
     return (
       pathname === "/ventas" ||
-      pathname.startsWith("/ventas/") ||
-      pathname === "/pagos" ||
-      pathname.startsWith("/pagos/") ||
-      pathname === "/clientes" ||
-      pathname.startsWith("/clientes/")
+      (/^\/ventas\//.test(pathname) && !pathname.startsWith("/ventas/clientes"))
+    );
+  }
+  if (href === "/clientes") {
+    return pathname === "/clientes" || pathname.startsWith("/clientes/");
+  }
+  if (href === "/compras") {
+    return pathname === "/compras" || pathname.startsWith("/compras/");
+  }
+  if (href === "/proveedores") {
+    return (
+      pathname === "/proveedores" ||
+      (/^\/proveedores\//.test(pathname) &&
+        !pathname.startsWith("/proveedores/compras"))
     );
   }
   return pathname === href || pathname.startsWith(`${href}/`);

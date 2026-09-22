@@ -31,17 +31,34 @@ export async function getSupplierDebtsAction(): Promise<{
   await requireAdmin();
   const supabase = await createClient();
 
-  const [suppliersRes, purchasesRes, paymentsRes] = await Promise.all([
-    supabase.from("suppliers").select("id, name").eq("active", true).order("name"),
-    supabase.from("purchases").select("id, supplier_id, total_amount, status"),
-    supabase
-      .from("supplier_payments")
-      .select("*, suppliers(name)")
-      .order("paid_at", { ascending: false })
-      .limit(40),
-  ]);
+  const [suppliersRes, purchasesRes, paymentsRes, allPaymentsRes] =
+    await Promise.all([
+      supabase
+        .from("suppliers")
+        .select("id, name")
+        .eq("active", true)
+        .order("name"),
+      supabase
+        .from("purchases")
+        .select("id, supplier_id, total_amount, status"),
+      supabase
+        .from("supplier_payments")
+        .select(
+          "id, supplier_id, purchase_id, amount, method, paid_at, notes, created_at, suppliers(name)",
+        )
+        .order("paid_at", { ascending: false })
+        .limit(40),
+      supabase
+        .from("supplier_payments")
+        .select("supplier_id, purchase_id, amount"),
+    ]);
 
-  if (suppliersRes.error || purchasesRes.error || paymentsRes.error) {
+  if (
+    suppliersRes.error ||
+    purchasesRes.error ||
+    paymentsRes.error ||
+    allPaymentsRes.error
+  ) {
     return {
       perSupplier: [],
       totalOwed: 0,
@@ -52,6 +69,7 @@ export async function getSupplierDebtsAction(): Promise<{
         suppliersRes.error?.message ||
         purchasesRes.error?.message ||
         paymentsRes.error?.message ||
+        allPaymentsRes.error?.message ||
         "Error al cargar deudas.",
     };
   }
@@ -62,10 +80,6 @@ export async function getSupplierDebtsAction(): Promise<{
     total_amount: p.total_amount == null ? null : Number(p.total_amount),
     status: p.status,
   })) as PurchaseDebtRow[];
-
-  const allPaymentsRes = await supabase
-    .from("supplier_payments")
-    .select("supplier_id, purchase_id, amount");
 
   const payments = (allPaymentsRes.data ?? []).map((p) => ({
     supplier_id: p.supplier_id as string,
@@ -86,7 +100,7 @@ export async function getSupplierDebtsAction(): Promise<{
     totalOwed,
     purchases,
     payments,
-    recentPayments: (paymentsRes.data ?? []) as SupplierPayment[],
+    recentPayments: (paymentsRes.data ?? []) as unknown as SupplierPayment[],
     error: null,
   };
 }
@@ -178,7 +192,7 @@ export async function createSupplierPaymentAction(input: {
   }
 
   revalidatePath("/pagos-proveedores");
-  revalidatePath("/proveedores/compras");
+  revalidatePath("/compras");
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago registrado." };
@@ -290,7 +304,7 @@ export async function updateSupplierPaymentAction(input: {
   }
 
   revalidatePath("/pagos-proveedores");
-  revalidatePath("/proveedores/compras");
+  revalidatePath("/compras");
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago actualizado." };

@@ -4,7 +4,7 @@ import { ClientsManager } from "@/components/clients/clients-manager";
 
 export const dynamic = "force-dynamic";
 
-export default async function VentasClientesPage() {
+export default async function ClientesPage() {
   await requireAdmin();
   const clientsRes = await listClientsAction(true);
 

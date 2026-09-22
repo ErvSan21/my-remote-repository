@@ -10,7 +10,6 @@ import {
 } from "@/lib/format";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
-import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
 type Props = {
   purchase: Purchase;
@@ -24,12 +23,10 @@ export function CompraDetail({ purchase, canEdit }: Props) {
 
   return (
     <div className="data-stack">
-      <ProveedoresAreaTabs />
-
       <header className="venta-detail-header">
         <div className="venta-detail-title-row">
           <Link
-            href="/proveedores/compras"
+            href="/compras"
             className="btn-icon-back"
             aria-label="Volver"
             title="Volver"
@@ -39,7 +36,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
           <h2 className="module-title">{title}</h2>
           {canEdit ? (
             <Link
-              href={`/proveedores/compras/${purchase.id}/editar`}
+              href={`/compras/${purchase.id}/editar`}
               className="btn-icon-edit"
               aria-label="Editar compra"
               title="Editar"

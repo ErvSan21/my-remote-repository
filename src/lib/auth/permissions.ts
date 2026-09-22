@@ -3,7 +3,6 @@ import { APP_NAV } from "@/lib/nav";
 
 function isVendedoraPath(path: string): boolean {
   if (path === "/ventas") return true;
-  if (path.startsWith("/ventas/clientes")) return false;
   if (/^\/ventas\/[^/]+\/editar\/?$/.test(path)) return false;
   if (/^\/ventas\/[^/]+\/?$/.test(path)) return true;
   if (path === "/pagos" || path.startsWith("/pagos/")) return true;
@@ -29,7 +28,7 @@ export function canAccessPath(pathname: string, role: AppRole): boolean {
 
   if (
     /^\/proveedores\/[^/]+\/editar\/?$/.test(path) ||
-    /^\/proveedores\/compras\/[^/]+\/editar\/?$/.test(path)
+    /^\/compras\/[^/]+\/editar\/?$/.test(path)
   ) {
     return role === "superadmin";
   }
@@ -62,12 +61,12 @@ export function navForRole(role: AppRole): NavItem[] {
   });
 }
 
-/** Barra flotante: Inicio, Ventas (incluye Clientes), Proveedores (último). */
+/** Dock: Inicio, Ventas, Clientes, Compras, Proveedores. */
 export function bottomNavForRole(role: AppRole): NavItem[] {
   const nav = navForRole(role);
   if (role === "vendedora") return nav;
 
-  const mobileHrefs = ["/", "/ventas", "/proveedores"];
+  const mobileHrefs = ["/", "/ventas", "/clientes", "/compras", "/proveedores"];
   return mobileHrefs
     .map((href) => nav.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item));

@@ -53,7 +53,7 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
       });
       setFeedback(result.message);
       if (result.ok) {
-        router.push(`/proveedores/compras/${purchase.id}`);
+        router.push(`/compras/${purchase.id}`);
         router.refresh();
       }
     });
@@ -64,7 +64,7 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
       <header className="venta-detail-header">
         <div className="venta-detail-title-row">
           <Link
-            href={`/proveedores/compras/${purchase.id}`}
+            href={`/compras/${purchase.id}`}
             className="btn-icon-back"
             aria-label="Volver"
             title="Volver"
@@ -150,7 +150,7 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
         </div>
         <div className="form-actions form-actions-split">
           <Link
-            href={`/proveedores/compras/${purchase.id}`}
+            href={`/compras/${purchase.id}`}
             className="btn-secondary btn-form"
           >
             Cancelar

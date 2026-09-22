@@ -5,7 +5,6 @@ import { upsertClientAction } from "@/app/actions/clients";
 import type { Client } from "@/lib/data-types";
 import { CLIENT_ZONES } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
-import { VentasAreaTabs } from "@/components/ventas/ventas-area-tabs";
 
 type Props = {
   clients: Client[];
@@ -64,8 +63,6 @@ export function ClientsManager({ clients, listError }: Props) {
           setFeedback(null);
         }}
       />
-
-      <VentasAreaTabs />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 

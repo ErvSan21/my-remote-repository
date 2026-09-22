@@ -145,7 +145,7 @@ export async function createClientPaymentAction(input: {
   }
 
   revalidatePath("/ventas");
-  revalidatePath("/ventas/clientes");
+  revalidatePath("/clientes");
   revalidatePath("/recibos");
   revalidatePath("/");
   return {
@@ -246,7 +246,7 @@ export async function updateClientPaymentAction(input: {
   }
 
   revalidatePath("/ventas");
-  revalidatePath("/ventas/clientes");
+  revalidatePath("/clientes");
   revalidatePath("/recibos");
   revalidatePath("/");
   return { ok: true, message: "Cobro actualizado." };

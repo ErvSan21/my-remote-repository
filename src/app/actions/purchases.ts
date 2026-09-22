@@ -7,6 +7,9 @@ import { paidTowardPurchase, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
 import type { PurchaseStatus } from "@/lib/types";
 
+const PURCHASE_SELECT =
+  "id, supplier_id, purchase_date, quantity_birds, unit_price, total_amount, status, notes, created_at, suppliers(name, phone)";
+
 export async function listPurchasesAction(): Promise<{
   purchases: Purchase[];
   error: string | null;
@@ -15,11 +18,11 @@ export async function listPurchasesAction(): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("purchases")
-    .select("*, suppliers(name, phone)")
+    .select(PURCHASE_SELECT)
     .order("created_at", { ascending: false });
 
   if (error) return { purchases: [], error: error.message };
-  return { purchases: (data ?? []) as Purchase[], error: null };
+  return { purchases: (data ?? []) as unknown as Purchase[], error: null };
 }
 
 export async function getPurchaseAction(id: string): Promise<{
@@ -31,12 +34,12 @@ export async function getPurchaseAction(id: string): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("purchases")
-    .select("*, suppliers(name, phone)")
+    .select(PURCHASE_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) return { purchase: null, error: error.message };
   if (!data) return { purchase: null, error: "Compra no encontrada." };
-  return { purchase: data as Purchase, error: null };
+  return { purchase: data as unknown as Purchase, error: null };
 }
 
 function resolveAmounts(quantity: number, unitPrice: number | null) {
@@ -106,7 +109,7 @@ export async function createPurchaseAction(input: {
     };
   }
 
-  revalidatePath("/proveedores/compras");
+  revalidatePath("/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
   revalidatePath("/inventario");
@@ -171,9 +174,9 @@ export async function updatePurchaseAction(input: {
     .eq("id", input.id);
 
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/proveedores/compras");
-  revalidatePath(`/proveedores/compras/${input.id}`);
-  revalidatePath(`/proveedores/compras/${input.id}/editar`);
+  revalidatePath("/compras");
+  revalidatePath(`/compras/${input.id}`);
+  revalidatePath(`/compras/${input.id}/editar`);
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
   revalidatePath("/");

@@ -19,7 +19,6 @@ export default async function VentasPage() {
       clients={clientsRes.clients}
       listError={ventasRes.error || clientsRes.error}
       canCreate={canCreate}
-      showClientesTab={canCreate}
     />
   );
 }

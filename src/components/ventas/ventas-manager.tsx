@@ -12,14 +12,12 @@ import {
 } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
-import { VentasAreaTabs } from "@/components/ventas/ventas-area-tabs";
 
 type Props = {
   ventas: VentaRow[];
   clients: Client[];
   listError: string | null;
   canCreate: boolean;
-  showClientesTab: boolean;
 };
 
 const emptyForm = {
@@ -47,7 +45,6 @@ export function VentasManager({
   clients,
   listError,
   canCreate,
-  showClientesTab,
 }: Props) {
   const router = useRouter();
   const activeClients = useMemo(
@@ -145,8 +142,6 @@ export function VentasManager({
         showAdd={canCreate && !showForm}
         onAdd={openCreate}
       />
-
-      <VentasAreaTabs showClientesTab={showClientesTab} />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 

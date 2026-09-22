@@ -5,7 +5,7 @@ import { PurchasesManager } from "@/components/purchases/purchases-manager";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProveedoresComprasPage() {
+export default async function ComprasPage() {
   await requireAdmin();
   const [suppliersRes, purchasesRes] = await Promise.all([
     listSuppliersAction(false),

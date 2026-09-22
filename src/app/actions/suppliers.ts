@@ -7,7 +7,7 @@ import type { ActionResult, Supplier } from "@/lib/data-types";
 
 function revalidateSuppliers(id?: string) {
   revalidatePath("/proveedores");
-  revalidatePath("/proveedores/compras");
+  revalidatePath("/compras");
   revalidatePath("/pagos-proveedores");
   revalidatePath("/");
   if (id) {
@@ -24,7 +24,7 @@ export async function listSuppliersAction(includeInactive = false): Promise<{
   const supabase = await createClient();
   let query = supabase
     .from("suppliers")
-    .select("*")
+    .select("id, name, location, phone, notes, active, created_at, updated_at")
     .order("name", { ascending: true });
 
   if (!includeInactive) {
@@ -45,7 +45,7 @@ export async function getSupplierAction(id: string): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("suppliers")
-    .select("*")
+    .select("id, name, location, phone, notes, active, created_at, updated_at")
     .eq("id", id)
     .maybeSingle();
   if (error) return { supplier: null, error: error.message };
