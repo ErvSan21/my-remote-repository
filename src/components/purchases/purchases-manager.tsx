@@ -26,6 +26,19 @@ function todayLaPaz() {
   });
 }
 
+function normalize(value: string | null | undefined) {
+  return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
+
+function dateKeyLaPaz(iso: string | null | undefined) {
+  if (!iso) return "";
+  // date-only (purchase_date / created_at date part)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  return new Date(iso).toLocaleDateString("en-CA", {
+    timeZone: "America/La_Paz",
+  });
+}
+
 const emptyForm = {
   id: "" as string,
   supplier_id: "",
@@ -47,7 +60,34 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   });
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const editing = Boolean(form.id);
+
+  const supplierPhoneById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of suppliers) {
+      map[s.id] = s.phone ?? "";
+    }
+    return map;
+  }, [suppliers]);
+
+  const visible = useMemo(() => {
+    const q = normalize(query.trim());
+    return purchases.filter((p) => {
+      if (q) {
+        const phone =
+          p.suppliers?.phone ?? supplierPhoneById[p.supplier_id] ?? "";
+        const haystack = normalize(`${p.suppliers?.name ?? ""} ${phone}`);
+        if (!haystack.includes(q)) return false;
+      }
+      const regDay = dateKeyLaPaz(p.created_at || p.purchase_date);
+      if (dateFrom && regDay < dateFrom) return false;
+      if (dateTo && regDay > dateTo) return false;
+      return true;
+    });
+  }, [purchases, query, dateFrom, dateTo, supplierPhoneById]);
 
   function resetForm() {
     setForm({
@@ -229,40 +269,97 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
       {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
 
-      <ul className="data-list">
-        {purchases.map((p) => (
-          <li key={p.id}>
-            <button
-              type="button"
-              className="data-card"
-              onClick={() => openEdit(p)}
-            >
-              <div className="data-card-top">
-                <div>
-                  <p className="data-card-title">
-                    {p.suppliers?.name ?? "Proveedor"}
-                  </p>
-                  <p className="data-card-meta">
-                    {formatDateLaPaz(p.purchase_date)} · {p.quantity_birds} aves
-                  </p>
-                </div>
-                <span className={`status-pill status-${p.status}`}>
-                  {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
-                </span>
+      {!showForm ? (
+        <>
+          <div className="list-filters">
+            <div className="search-bar">
+              <label htmlFor="pur-search" className="sr-only">
+                Buscar
+              </label>
+              <input
+                id="pur-search"
+                type="search"
+                placeholder="Buscar por proveedor o celular…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <div className="list-date-filters">
+              <div className="field">
+                <label htmlFor="pur-desde">Desde</label>
+                <input
+                  id="pur-desde"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
               </div>
-              <p className="data-card-meta">
-                Precio:{" "}
-                {p.unit_price == null ? "pendiente" : formatBs(p.unit_price)}
-                {" · "}
-                Total: {formatBs(p.total_amount)}
-              </p>
-            </button>
-          </li>
-        ))}
-        {purchases.length === 0 ? (
-          <li className="data-empty">No hay compras registradas.</li>
-        ) : null}
-      </ul>
+              <div className="field">
+                <label htmlFor="pur-hasta">Hasta</label>
+                <input
+                  id="pur-hasta"
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+            </div>
+            {dateFrom || dateTo ? (
+              <button
+                type="button"
+                className="btn-secondary list-clear-dates"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                Limpiar fechas
+              </button>
+            ) : null}
+          </div>
+
+          <ul className="data-list">
+            {visible.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className="data-card"
+                  onClick={() => openEdit(p)}
+                >
+                  <div className="data-card-top">
+                    <div>
+                      <p className="data-card-title">
+                        {p.suppliers?.name ?? "Proveedor"}
+                      </p>
+                      <p className="data-card-meta">
+                        {formatDateLaPaz(p.created_at || p.purchase_date)} ·{" "}
+                        {p.quantity_birds} aves
+                        {p.suppliers?.phone ? ` · ${p.suppliers.phone}` : ""}
+                      </p>
+                    </div>
+                    <span className={`status-pill status-${p.status}`}>
+                      {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
+                    </span>
+                  </div>
+                  <p className="data-card-meta">
+                    Precio:{" "}
+                    {p.unit_price == null ? "pendiente" : formatBs(p.unit_price)}
+                    {" · "}
+                    Total: {formatBs(p.total_amount)}
+                  </p>
+                </button>
+              </li>
+            ))}
+            {visible.length === 0 ? (
+              <li className="data-empty">
+                {purchases.length === 0
+                  ? "No hay compras de proveedores todavía."
+                  : "Ninguna compra de proveedor coincide con la búsqueda."}
+              </li>
+            ) : null}
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }

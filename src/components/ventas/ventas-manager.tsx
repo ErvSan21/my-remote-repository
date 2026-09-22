@@ -485,7 +485,7 @@ export function VentasManager({
 
       {!showForm ? (
         <>
-          <div className="venta-filters">
+          <div className="list-filters">
             <div className="search-bar">
               <label htmlFor="ve-search" className="sr-only">
                 Buscar
@@ -498,7 +498,7 @@ export function VentasManager({
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div className="venta-date-filters">
+            <div className="list-date-filters">
               <div className="field">
                 <label htmlFor="ve-desde">Desde</label>
                 <input
@@ -521,7 +521,7 @@ export function VentasManager({
             {dateFrom || dateTo ? (
               <button
                 type="button"
-                className="btn-secondary venta-clear-dates"
+                className="btn-secondary list-clear-dates"
                 onClick={() => {
                   setDateFrom("");
                   setDateTo("");

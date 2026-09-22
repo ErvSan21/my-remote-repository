@@ -1055,6 +1055,26 @@ button.data-card:focus-visible {
   font-size: 0.8rem;
 }
 
+.list-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.list-date-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.list-date-filters .field {
+  margin-top: 0;
+}
+
+.list-clear-dates {
+  align-self: flex-start;
+}
+
 .venta-filters {
   display: flex;
   flex-direction: column;

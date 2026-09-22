@@ -15,8 +15,7 @@ export async function listPurchasesAction(): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("purchases")
-    .select("*, suppliers(name)")
-    .order("purchase_date", { ascending: false })
+    .select("*, suppliers(name, phone)")
     .order("created_at", { ascending: false });
 
   if (error) return { purchases: [], error: error.message };
