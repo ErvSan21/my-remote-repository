@@ -17,17 +17,17 @@ export const APP_NAV: NavItem[] = [
     roles: ["vendedora", "admin", "superadmin"],
   },
   {
-    href: "/clientes",
-    label: "Clientes",
-    shortLabel: "Clientes",
-    icon: "clients",
-    roles: ["admin", "superadmin"],
-  },
-  {
     href: "/compras",
     label: "Compras",
     shortLabel: "Compras",
     icon: "purchases",
+    roles: ["admin", "superadmin"],
+  },
+  {
+    href: "/clientes",
+    label: "Clientes",
+    shortLabel: "Clientes",
+    icon: "clients",
     roles: ["admin", "superadmin"],
   },
   {

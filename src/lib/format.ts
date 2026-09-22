@@ -45,7 +45,7 @@ export function formatVentaTitle(saleNumber: number | null | undefined): string 
   if (saleNumber == null || !Number.isFinite(Number(saleNumber))) {
     return "Venta";
   }
-  return `Venta ${String(Math.trunc(Number(saleNumber))).padStart(5, "0")}`;
+  return `V-${String(Math.trunc(Number(saleNumber))).padStart(4, "0")}`;
 }
 
 export function paymentLabel(

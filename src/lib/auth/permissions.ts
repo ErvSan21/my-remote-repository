@@ -61,12 +61,12 @@ export function navForRole(role: AppRole): NavItem[] {
   });
 }
 
-/** Dock: Inicio, Ventas, Clientes, Compras, Proveedores. */
+/** Dock: Inicio, Ventas, Compras, Clientes, Proveedores. */
 export function bottomNavForRole(role: AppRole): NavItem[] {
   const nav = navForRole(role);
   if (role === "vendedora") return nav;
 
-  const mobileHrefs = ["/", "/ventas", "/clientes", "/compras", "/proveedores"];
+  const mobileHrefs = ["/", "/ventas", "/compras", "/clientes", "/proveedores"];
   return mobileHrefs
     .map((href) => nav.find((item) => item.href === href))
     .filter((item): item is NavItem => Boolean(item));

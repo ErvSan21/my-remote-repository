@@ -46,11 +46,13 @@ export function FloatingDock({ items }: Props) {
             href={item.href}
             className={`bottom-nav-link${active ? " is-active" : ""}`}
             aria-current={active ? "page" : undefined}
-            aria-label={item.label}
-            title={item.label}
           >
-            {item.icon ? <NavIconSvg name={item.icon} /> : null}
-            <span className="sr-only">{item.shortLabel ?? item.label}</span>
+            <span className="bottom-nav-icon" aria-hidden>
+              {item.icon ? <NavIconSvg name={item.icon} /> : null}
+            </span>
+            <span className="bottom-nav-label">
+              {item.shortLabel ?? item.label}
+            </span>
           </Link>
         );
       })}

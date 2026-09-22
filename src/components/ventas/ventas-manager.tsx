@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createConsignmentAction } from "@/app/actions/consignments";
 import type { Client, VentaRow } from "@/lib/data-types";
 import {
-  formatAmountPlain,
+  formatBs,
   formatDateLaPaz,
   formatVentaTitle,
 } from "@/lib/format";
@@ -80,8 +80,9 @@ export function VentasManager({
     const q = normalize(query.trim());
     return ventas.filter((v) => {
       if (q) {
+        const code = formatVentaTitle(v.sale_number);
         const haystack = normalize(
-          `${v.clients?.name ?? ""} ${v.clients?.phone ?? ""}`,
+          `${v.clients?.name ?? ""} ${v.clients?.phone ?? ""} ${code} ${v.sale_number ?? ""}`,
         );
         if (!haystack.includes(q)) return false;
       }
@@ -138,7 +139,9 @@ export function VentasManager({
     <div className="data-stack">
       <PageHeader
         title="Ventas"
-        addLabel="Nueva venta"
+        subtitle="Historial de ventas, estado de pago y montos pendientes."
+        addLabel="Registrar venta"
+        addStyle="button"
         showAdd={canCreate && !showForm}
         onAdd={openCreate}
       />
@@ -280,7 +283,7 @@ export function VentasManager({
               <input
                 id="ve-search"
                 type="search"
-                placeholder="Buscar por nombre o celular…"
+                placeholder="Buscar por cliente o código…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -322,38 +325,61 @@ export function VentasManager({
           <ul className="data-list">
             {visible.map((v) => {
               const name = v.clients?.name ?? "Cliente";
-              const phone = v.clients?.phone || "Sin celular";
-              const amountShown = v.is_paid
-                ? v.total_amount
-                : v.total_amount == null
-                  ? null
-                  : v.pending_amount;
+              const isCredit = !v.is_paid || v.payments.length > 1;
+              const statusKey = v.is_paid
+                ? "paid"
+                : v.paid_amount > 0.001
+                  ? "partial"
+                  : "pending";
+              const statusLabel =
+                statusKey === "paid"
+                  ? "Pagado"
+                  : statusKey === "partial"
+                    ? "Pago parcial"
+                    : "Pendiente";
               return (
                 <li key={v.id}>
-                  <Link href={`/ventas/${v.id}`} className="data-card venta-card">
-                    <div className="data-card-top">
-                      <div>
-                        <p className="data-card-title">
-                          {formatVentaTitle(v.sale_number)}
-                        </p>
-                        <p className="data-card-meta">{name}</p>
+                  <Link
+                    href={`/ventas/${v.id}`}
+                    className="data-card venta-card"
+                  >
+                    <div className="venta-card-main">
+                      <div className="venta-card-body">
+                        <div className="venta-card-title-line">
+                          <p className="data-card-title venta-card-client">
+                            {name}
+                          </p>
+                          <span
+                            className={`venta-type-badge${isCredit ? " is-credit" : " is-cash"}`}
+                          >
+                            {isCredit ? "Crédito" : "Contado"}
+                          </span>
+                        </div>
                         <p className="data-card-meta">
+                          {formatVentaTitle(v.sale_number)}
+                          {" · "}
                           {formatDateLaPaz(v.created_at)}
                         </p>
-                        <p className="data-card-meta">{phone}</p>
+                        <span
+                          className={`venta-status-pill status-${statusKey}`}
+                        >
+                          <span className="venta-status-dot" aria-hidden />
+                          {statusLabel}
+                        </span>
                       </div>
                       <div className="venta-card-right">
-                        {v.is_paid ? (
-                          <span className="venta-pagado">Pagado</span>
-                        ) : (
-                          <span className="venta-credito">Pendiente</span>
-                        )}
-                        <p
-                          className={`venta-amount-plain${v.is_paid ? " is-paid" : ""}`}
-                        >
-                          {formatAmountPlain(amountShown)}
+                        <p className="venta-amount-plain">
+                          {formatBs(v.total_amount)}
                         </p>
+                        {!v.is_paid ? (
+                          <p className="venta-debe">
+                            Debe {formatBs(v.pending_amount)}
+                          </p>
+                        ) : null}
                       </div>
+                      <span className="venta-card-chevron" aria-hidden>
+                        ›
+                      </span>
                     </div>
                   </Link>
                 </li>
