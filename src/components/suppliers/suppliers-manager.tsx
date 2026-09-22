@@ -64,7 +64,9 @@ export function SuppliersManager({
     <div className="data-stack">
       <PageHeader
         title="Proveedores"
+        subtitle="Proveedores activos y deuda pendiente."
         addLabel="Crear proveedor"
+        addStyle="button"
         showAdd={!showForm}
         onAdd={() => {
           setForm(emptyForm);

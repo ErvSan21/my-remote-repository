@@ -29,7 +29,9 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
           <div>
             <p className="brand-name">MAC</p>
             <p className="brand-sub">
-              {displayName ? `${displayName} · ${roleLabel}` : roleLabel}
+              {displayName
+                ? `${displayName} · Gestión Avícola`
+                : `Gestión Avícola · ${roleLabel}`}
             </p>
           </div>
         </div>

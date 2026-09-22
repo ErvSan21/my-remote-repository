@@ -120,7 +120,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     <div className="data-stack">
       <PageHeader
         title="Compras"
+        subtitle="Historial de compras a proveedores y estado de pago."
         addLabel="Registrar compra"
+        addStyle="button"
         showAdd={!showForm}
         onAdd={() => {
           setForm({

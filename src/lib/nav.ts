@@ -1,6 +1,6 @@
 import type { NavItem } from "@/lib/types";
 
-/** Navegación base; el filtrado por rol ocurre en navForRole(). */
+/** Navegación principal: Dashboard, Ventas, Compras, Clientes, Proveedores. */
 export const APP_NAV: NavItem[] = [
   {
     href: "/",
@@ -36,33 +36,5 @@ export const APP_NAV: NavItem[] = [
     shortLabel: "Proveed.",
     icon: "suppliers",
     roles: ["admin", "superadmin"],
-  },
-  {
-    href: "/pagos-proveedores",
-    label: "Pagos proveedores",
-    shortLabel: "P.Prov",
-    icon: "payments",
-    roles: ["admin", "superadmin"],
-  },
-  {
-    href: "/inventario",
-    label: "Inventario",
-    shortLabel: "Inventario",
-    icon: "inventory",
-    roles: ["admin", "superadmin"],
-  },
-  {
-    href: "/cierres",
-    label: "Cierres / PDF",
-    shortLabel: "Cierres",
-    icon: "closures",
-    roles: ["admin", "superadmin"],
-  },
-  {
-    href: "/usuarios",
-    label: "Usuarios",
-    shortLabel: "Users",
-    icon: "users",
-    roles: ["superadmin"],
   },
 ];

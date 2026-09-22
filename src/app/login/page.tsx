@@ -22,8 +22,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="login-stage">
         <div className="login-brand">
           <p className="login-kicker">MAC</p>
-          <h1>Ingresar</h1>
-          <p>Operación de pollo en pie — Bolivia.</p>
+          <h1>Gestión Avícola</h1>
+          <p>Ventas, compras, clientes y proveedores.</p>
         </div>
 
         <LoginForm

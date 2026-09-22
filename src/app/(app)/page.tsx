@@ -2,7 +2,6 @@ import Link from "next/link";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
-import { getPolloDisponible } from "@/lib/inventory";
 import { createClient } from "@/lib/supabase/server";
 import { formatBs } from "@/lib/format";
 
@@ -36,9 +35,8 @@ export default async function DashboardPage() {
   const { start, end } = dayBoundsLaPaz();
   const weekFrom = weekStartLaPaz();
 
-  const [debts, available, todayPays, weekPays] = await Promise.all([
+  const [debts, todayPays, weekPays, openVentas] = await Promise.all([
     getSupplierDebtsAction(),
-    getPolloDisponible(),
     supabase
       .from("client_payments")
       .select("amount")
@@ -48,6 +46,10 @@ export default async function DashboardPage() {
       .from("client_payments")
       .select("amount")
       .gte("paid_at", `${weekFrom}T00:00:00-04:00`),
+    supabase
+      .from("consignments")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["open", "partial"]),
   ]);
 
   const cobradoHoy = (todayPays.data ?? []).reduce(
@@ -61,11 +63,13 @@ export default async function DashboardPage() {
   const pendingPrice = debts.purchases.filter(
     (p) => p.status === "pending_price",
   ).length;
+  const ventasPendientes = openVentas.count ?? 0;
 
   return (
     <>
       <section className="hero-dash">
-        <h1>MAC</h1>
+        <h1>Gestión Avícola</h1>
+        <p>MAC — ventas, compras, clientes y proveedores.</p>
       </section>
 
       <section className="metrics-grid" aria-label="Métricas">
@@ -75,9 +79,9 @@ export default async function DashboardPage() {
           hint="Total a todos"
         />
         <MetricCard
-          label="Pollo disponible"
-          value={`${available}`}
-          hint="Aves en lotes abiertos"
+          label="Ventas abiertas"
+          value={String(ventasPendientes)}
+          hint="Pendientes o parciales"
         />
         <MetricCard
           label="Cobrado hoy"
@@ -91,23 +95,28 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <p className="setup-banner">
-        Compras sin precio: <strong>{pendingPrice}</strong>
-        {" · "}
-        <Link href="/proveedores">Proveedores</Link>
-        {" · "}
-        <Link href="/compras">Compras</Link>
-        {" · "}
-        <Link href="/pagos-proveedores">Pagos prov.</Link>
-        {" · "}
-        <Link href="/clientes">Clientes</Link>
-        {" · "}
-        <Link href="/ventas">Ventas</Link>
-        {" · "}
-        <Link href="/inventario">Inventario</Link>
-        {" · "}
-        <Link href="/cierres">Cierres PDF</Link>
-      </p>
+      <section className="dash-links" aria-label="Accesos rápidos">
+        <Link href="/ventas" className="dash-link-card">
+          Ventas
+        </Link>
+        <Link href="/compras" className="dash-link-card">
+          Compras
+        </Link>
+        <Link href="/clientes" className="dash-link-card">
+          Clientes
+        </Link>
+        <Link href="/proveedores" className="dash-link-card">
+          Proveedores
+        </Link>
+      </section>
+
+      {pendingPrice > 0 ? (
+        <p className="setup-banner">
+          Compras sin precio: <strong>{pendingPrice}</strong>
+          {" · "}
+          <Link href="/compras">Ver compras</Link>
+        </p>
+      ) : null}
     </>
   );
 }
