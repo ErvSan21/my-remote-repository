@@ -16,6 +16,18 @@ export async function requireAdmin(): Promise<AuthContext> {
   return auth;
 }
 
+export async function requireSuperadmin(): Promise<AuthContext> {
+  const auth = await requireAuth();
+  if (auth.profile.role !== "superadmin") {
+    redirect("/ventas");
+  }
+  return auth;
+}
+
 export function isAdminRole(role: AppRole): boolean {
   return role === "admin" || role === "superadmin";
+}
+
+export function isSuperadminRole(role: AppRole): boolean {
+  return role === "superadmin";
 }

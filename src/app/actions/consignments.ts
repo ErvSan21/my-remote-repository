@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAuth } from "@/lib/auth/guards";
+import { requireAdmin, requireAuth, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { removeStockForConsignment } from "@/lib/inventory";
 import type {
@@ -13,11 +13,15 @@ import type {
 import type { ConsignmentStatus, PaymentMethod } from "@/lib/types";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
 
-function revalidateVentas() {
+function revalidateVentas(ventaId?: string) {
   revalidatePath("/ventas");
   revalidatePath("/ventas/clientes");
   revalidatePath("/inventario");
   revalidatePath("/");
+  if (ventaId) {
+    revalidatePath(`/ventas/${ventaId}`);
+    revalidatePath(`/ventas/${ventaId}/editar`);
+  }
 }
 
 function profileDisplay(raw: unknown) {
@@ -159,6 +163,20 @@ export async function listVentasAction(): Promise<{
   };
 }
 
+export async function getVentaAction(id: string): Promise<{
+  venta: VentaRow | null;
+  error: string | null;
+}> {
+  await requireAuth();
+  if (!id) return { venta: null, error: "Venta inválida." };
+
+  const { ventas, error } = await listVentasAction();
+  if (error) return { venta: null, error };
+  const venta = ventas.find((v) => v.id === id) ?? null;
+  if (!venta) return { venta: null, error: "Venta no encontrada." };
+  return { venta, error: null };
+}
+
 export async function listConsignmentsAction(): Promise<{
   consignments: Consignment[];
   error: string | null;
@@ -201,7 +219,7 @@ export async function createConsignmentAction(input: {
   const qty = Number(input.quantity_birds);
   if (!input.client_id) return { ok: false, message: "Elige un cliente." };
   if (!Number.isFinite(qty) || qty <= 0) {
-    return { ok: false, message: "Cantidad de aves inválida." };
+    return { ok: false, message: "Cantidad inválida." };
   }
 
   const unitPrice = Number(input.unit_price);
@@ -252,14 +270,14 @@ export async function createConsignmentAction(input: {
       notes: "Pago al contado",
     });
     if (!pay.ok) {
-      revalidateVentas();
+      revalidateVentas(row.id);
       return {
         ok: false,
         message: `Venta creada pero falló el cobro: ${pay.message}`,
         consignmentId: row.id,
       };
     }
-    revalidateVentas();
+    revalidateVentas(row.id);
     return {
       ok: true,
       message: "Venta al contado registrada.",
@@ -267,7 +285,7 @@ export async function createConsignmentAction(input: {
     };
   }
 
-  revalidateVentas();
+  revalidateVentas(row.id);
   return {
     ok: true,
     message: "Venta a crédito registrada. Stock descontado.",
@@ -279,7 +297,7 @@ export async function updateConsignmentPriceAction(input: {
   id: string;
   unit_price: number;
 }): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSuperadmin();
   const price = Number(input.unit_price);
   if (!Number.isFinite(price) || price < 0) {
     return { ok: false, message: "Precio inválido." };
@@ -303,7 +321,7 @@ export async function updateConsignmentPriceAction(input: {
     })
     .eq("id", input.id);
   if (error) return { ok: false, message: error.message };
-  revalidateVentas();
+  revalidateVentas(input.id);
   return { ok: true, message: "Precio actualizado." };
 }
 
@@ -313,7 +331,7 @@ export async function updateConsignmentAction(input: {
   unit_price: number | null;
   notes: string;
 }): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSuperadmin();
   if (!input.id) return { ok: false, message: "Venta inválida." };
   if (!input.client_id) return { ok: false, message: "Elige un cliente." };
 
@@ -346,6 +364,6 @@ export async function updateConsignmentAction(input: {
     .eq("id", input.id);
 
   if (error) return { ok: false, message: error.message };
-  revalidateVentas();
+  revalidateVentas(input.id);
   return { ok: true, message: "Venta actualizada." };
 }

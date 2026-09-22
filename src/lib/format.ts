@@ -41,6 +41,29 @@ export function formatDateTimeLaPaz(isoDate: string | null | undefined): string 
   });
 }
 
+export function formatVentaTitle(saleNumber: number | null | undefined): string {
+  if (saleNumber == null || !Number.isFinite(Number(saleNumber))) {
+    return "Venta";
+  }
+  return `Venta ${String(Math.trunc(Number(saleNumber))).padStart(5, "0")}`;
+}
+
+export function paymentLabel(
+  payments: { amount: number }[],
+  indexChronological: number,
+  saleTotal: number | null | undefined,
+): string {
+  if (
+    payments.length === 1 &&
+    saleTotal != null &&
+    Number.isFinite(Number(saleTotal)) &&
+    Math.abs(Number(payments[0].amount) - Number(saleTotal)) < 0.001
+  ) {
+    return "Pago total";
+  }
+  return `Pago ${indexChronological + 1}`;
+}
+
 export const BOLIVIA_DEPARTMENTS = [
   "La Paz",
   "Cochabamba",

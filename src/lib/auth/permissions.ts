@@ -2,12 +2,11 @@ import type { AppRole, NavItem } from "@/lib/types";
 import { APP_NAV } from "@/lib/nav";
 
 function isVendedoraPath(path: string): boolean {
-  if (path === "/ventas" || path.startsWith("/ventas/")) {
-    // Vendedora: listado de ventas / cobros; no gestión de clientes
-    if (path.startsWith("/ventas/clientes")) return false;
-    return true;
-  }
-  if (path === "/pagos" || path.startsWith("/pagos/")) return true; // redirect legacy
+  if (path === "/ventas") return true;
+  if (path.startsWith("/ventas/clientes")) return false;
+  if (/^\/ventas\/[^/]+\/editar\/?$/.test(path)) return false;
+  if (/^\/ventas\/[^/]+\/?$/.test(path)) return true;
+  if (path === "/pagos" || path.startsWith("/pagos/")) return true;
   if (path.startsWith("/recibos/")) return true;
   return false;
 }
@@ -21,6 +20,10 @@ export function canAccessPath(pathname: string, role: AppRole): boolean {
   }
 
   if (path === "/usuarios") {
+    return role === "superadmin";
+  }
+
+  if (/^\/ventas\/[^/]+\/editar\/?$/.test(path)) {
     return role === "superadmin";
   }
 

@@ -60,6 +60,7 @@ export type Consignment = {
   left_at: string;
   created_at: string;
   created_by: string | null;
+  sale_number: number | null;
   notes: string | null;
   clients?: {
     name: string;
