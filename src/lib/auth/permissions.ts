@@ -27,6 +27,13 @@ export function canAccessPath(pathname: string, role: AppRole): boolean {
     return role === "superadmin";
   }
 
+  if (
+    /^\/proveedores\/[^/]+\/editar\/?$/.test(path) ||
+    /^\/proveedores\/compras\/[^/]+\/editar\/?$/.test(path)
+  ) {
+    return role === "superadmin";
+  }
+
   return true;
 }
 

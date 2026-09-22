@@ -1,0 +1,168 @@
+"use client";
+
+import { FormEvent, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { updatePurchaseAction } from "@/app/actions/purchases";
+import type { Purchase, Supplier } from "@/lib/data-types";
+import { formatDateLaPaz } from "@/lib/format";
+
+type Props = {
+  purchase: Purchase;
+  suppliers: Supplier[];
+};
+
+export function CompraEditForm({ purchase, suppliers }: Props) {
+  const router = useRouter();
+  const activeSuppliers = useMemo(
+    () => suppliers.filter((s) => s.active),
+    [suppliers],
+  );
+  const [supplierId, setSupplierId] = useState(purchase.supplier_id);
+  const [purchaseDate, setPurchaseDate] = useState(purchase.purchase_date);
+  const [quantity, setQuantity] = useState(String(purchase.quantity_birds));
+  const [unitPrice, setUnitPrice] = useState(
+    purchase.unit_price == null ? "" : String(purchase.unit_price),
+  );
+  const [notes, setNotes] = useState(purchase.notes ?? "");
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const qtyNum = Number(quantity);
+  const priceRaw = unitPrice.trim();
+  const priceNum = priceRaw === "" ? null : Number(priceRaw);
+  const canSave =
+    Boolean(supplierId) &&
+    Number.isFinite(qtyNum) &&
+    qtyNum > 0 &&
+    (priceNum == null || (Number.isFinite(priceNum) && priceNum >= 0)) &&
+    !pending;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSave) return;
+    startTransition(async () => {
+      const result = await updatePurchaseAction({
+        id: purchase.id,
+        supplier_id: supplierId,
+        purchase_date: purchaseDate,
+        quantity_birds: qtyNum,
+        unit_price: priceNum,
+        notes,
+      });
+      setFeedback(result.message);
+      if (result.ok) {
+        router.push(`/proveedores/compras/${purchase.id}`);
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="data-stack">
+      <div className="venta-detail-nav">
+        <Link
+          href={`/proveedores/compras/${purchase.id}`}
+          className="btn-secondary btn-form"
+        >
+          Volver
+        </Link>
+      </div>
+
+      <header className="venta-detail-header">
+        <h2 className="module-title">
+          {purchase.suppliers?.name
+            ? `Compra · ${purchase.suppliers.name}`
+            : "Editar compra"}
+        </h2>
+        <p className="data-card-meta">
+          {formatDateLaPaz(purchase.created_at || purchase.purchase_date)}
+        </p>
+      </header>
+
+      <form className="data-form" onSubmit={onSubmit}>
+        <h3 className="data-form-title">Editar compra</h3>
+        <div className="field">
+          <label htmlFor="pur-edit-supplier">Proveedor</label>
+          <select
+            id="pur-edit-supplier"
+            required
+            value={supplierId}
+            onChange={(e) => setSupplierId(e.target.value)}
+            disabled={pending}
+          >
+            {activeSuppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="pur-edit-date">Fecha</label>
+            <input
+              id="pur-edit-date"
+              type="date"
+              required
+              value={purchaseDate}
+              onChange={(e) => setPurchaseDate(e.target.value)}
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="pur-edit-qty">Cantidad</label>
+            <input
+              id="pur-edit-qty"
+              type="number"
+              min={1}
+              required
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              disabled={pending}
+            />
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="pur-edit-price">Precio unitario (Bs)</label>
+          <input
+            id="pur-edit-price"
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="Vacío = pendiente"
+            value={unitPrice}
+            onChange={(e) => setUnitPrice(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="pur-edit-notes">Notas</label>
+          <textarea
+            id="pur-edit-notes"
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+        <div className="form-actions form-actions-split">
+          <Link
+            href={`/proveedores/compras/${purchase.id}`}
+            className="btn-secondary btn-form"
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            className="btn-primary btn-form"
+            disabled={!canSave}
+          >
+            {pending ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+        {feedback ? <p className="login-hint">{feedback}</p> : null}
+      </form>
+    </div>
+  );
+}

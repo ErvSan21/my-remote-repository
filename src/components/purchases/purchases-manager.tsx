@@ -1,10 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import {
-  createPurchaseAction,
-  updatePurchaseAction,
-} from "@/app/actions/purchases";
+import Link from "next/link";
+import { createPurchaseAction } from "@/app/actions/purchases";
 import type { Purchase, Supplier } from "@/lib/data-types";
 import {
   PURCHASE_STATUS_LABEL,
@@ -32,7 +30,6 @@ function normalize(value: string | null | undefined) {
 
 function dateKeyLaPaz(iso: string | null | undefined) {
   if (!iso) return "";
-  // date-only (purchase_date / created_at date part)
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
   return new Date(iso).toLocaleDateString("en-CA", {
     timeZone: "America/La_Paz",
@@ -40,7 +37,6 @@ function dateKeyLaPaz(iso: string | null | undefined) {
 }
 
 const emptyForm = {
-  id: "" as string,
   supplier_id: "",
   purchase_date: todayLaPaz(),
   quantity_birds: "",
@@ -63,7 +59,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   const [query, setQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const editing = Boolean(form.id);
 
   const supplierPhoneById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -98,29 +93,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     setShowForm(false);
   }
 
-  function openCreate() {
-    setForm({
-      ...emptyForm,
-      supplier_id: activeSuppliers[0]?.id ?? "",
-      purchase_date: todayLaPaz(),
-    });
-    setShowForm(true);
-    setFeedback(null);
-  }
-
-  function openEdit(p: Purchase) {
-    setForm({
-      id: p.id,
-      supplier_id: p.supplier_id,
-      purchase_date: p.purchase_date,
-      quantity_birds: String(p.quantity_birds),
-      unit_price: p.unit_price == null ? "" : String(p.unit_price),
-      notes: p.notes ?? "",
-    });
-    setShowForm(true);
-    setFeedback(null);
-  }
-
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const qty = Number(form.quantity_birds);
@@ -133,16 +105,13 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     }
 
     startTransition(async () => {
-      const payload = {
+      const result = await createPurchaseAction({
         supplier_id: form.supplier_id,
         purchase_date: form.purchase_date,
         quantity_birds: qty,
         unit_price,
         notes: form.notes,
-      };
-      const result = form.id
-        ? await updatePurchaseAction({ id: form.id, ...payload })
-        : await createPurchaseAction(payload);
+      });
       setFeedback(result.message);
       if (result.ok) resetForm();
     });
@@ -154,7 +123,15 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
         title="Compras"
         addLabel="Registrar compra"
         showAdd={!showForm}
-        onAdd={openCreate}
+        onAdd={() => {
+          setForm({
+            ...emptyForm,
+            supplier_id: activeSuppliers[0]?.id ?? "",
+            purchase_date: todayLaPaz(),
+          });
+          setShowForm(true);
+          setFeedback(null);
+        }}
       />
 
       <ProveedoresAreaTabs />
@@ -163,9 +140,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
-            {editing ? "Editar compra" : "Nueva compra"}
-          </h3>
+          <h3 className="data-form-title">Nueva compra</h3>
           <div className="field">
             <label htmlFor="pur-supplier">Proveedor</label>
             <select
@@ -202,7 +177,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
               />
             </div>
             <div className="field">
-              <label htmlFor="pur-qty">Cantidad (aves)</label>
+              <label htmlFor="pur-qty">Cantidad</label>
               <input
                 id="pur-qty"
                 type="number"
@@ -242,32 +217,26 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
               disabled={pending}
             />
           </div>
-          <div className="form-actions">
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={pending || activeSuppliers.length === 0}
-            >
-              {pending
-                ? "Guardando…"
-                : editing
-                  ? "Guardar cambios"
-                  : "Registrar compra"}
-            </button>
+          <div className="form-actions form-actions-split">
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-form"
               onClick={resetForm}
               disabled={pending}
             >
               Cancelar
             </button>
+            <button
+              type="submit"
+              className="btn-primary btn-form"
+              disabled={pending || activeSuppliers.length === 0}
+            >
+              {pending ? "Guardando…" : "Guardar"}
+            </button>
           </div>
           {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
-
-      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
 
       {!showForm ? (
         <>
@@ -321,10 +290,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
           <ul className="data-list">
             {visible.map((p) => (
               <li key={p.id}>
-                <button
-                  type="button"
+                <Link
+                  href={`/proveedores/compras/${p.id}`}
                   className="data-card"
-                  onClick={() => openEdit(p)}
                 >
                   <div className="data-card-top">
                     <div>
@@ -333,7 +301,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                       </p>
                       <p className="data-card-meta">
                         {formatDateLaPaz(p.created_at || p.purchase_date)} ·{" "}
-                        {p.quantity_birds} aves
+                        {p.quantity_birds}
                         {p.suppliers?.phone ? ` · ${p.suppliers.phone}` : ""}
                       </p>
                     </div>
@@ -347,7 +315,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                     {" · "}
                     Total: {formatBs(p.total_amount)}
                   </p>
-                </button>
+                </Link>
               </li>
             ))}
             {visible.length === 0 ? (

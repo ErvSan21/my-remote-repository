@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
+import { PencilIcon } from "@/components/ui/pencil-icon";
 import type { ProfileRef, VentaRow } from "@/lib/data-types";
 import {
   PAYMENT_METHOD_LABEL,
@@ -21,25 +22,6 @@ type Props = {
 
 function personEmail(p?: ProfileRef | null) {
   return p?.email || p?.username || p?.full_name || "—";
-}
-
-function PencilIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
 }
 
 export function VentaDetail({ venta, canEdit }: Props) {

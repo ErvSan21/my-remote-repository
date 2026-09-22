@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/guards";
+import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { paidTowardPurchase, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
@@ -20,6 +20,23 @@ export async function listPurchasesAction(): Promise<{
 
   if (error) return { purchases: [], error: error.message };
   return { purchases: (data ?? []) as Purchase[], error: null };
+}
+
+export async function getPurchaseAction(id: string): Promise<{
+  purchase: Purchase | null;
+  error: string | null;
+}> {
+  await requireAdmin();
+  if (!id) return { purchase: null, error: "Compra inválida." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("*, suppliers(name, phone)")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return { purchase: null, error: error.message };
+  if (!data) return { purchase: null, error: "Compra no encontrada." };
+  return { purchase: data as Purchase, error: null };
 }
 
 function resolveAmounts(quantity: number, unitPrice: number | null) {
@@ -111,11 +128,11 @@ export async function updatePurchaseAction(input: {
   unit_price: number | null;
   notes: string;
 }): Promise<ActionResult> {
-  await requireAdmin();
+  await requireSuperadmin();
   const qty = Number(input.quantity_birds);
   if (!input.id) return { ok: false, message: "Compra inválida." };
   if (!Number.isFinite(qty) || qty <= 0) {
-    return { ok: false, message: "La cantidad de aves debe ser mayor a 0." };
+    return { ok: false, message: "La cantidad debe ser mayor a 0." };
   }
 
   const amounts = resolveAmounts(qty, input.unit_price);
@@ -155,6 +172,8 @@ export async function updatePurchaseAction(input: {
 
   if (error) return { ok: false, message: error.message };
   revalidatePath("/proveedores/compras");
+  revalidatePath(`/proveedores/compras/${input.id}`);
+  revalidatePath(`/proveedores/compras/${input.id}/editar`);
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
   revalidatePath("/");

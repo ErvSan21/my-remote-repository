@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { upsertSupplierAction } from "@/app/actions/suppliers";
+import Link from "next/link";
+import { createSupplierAction } from "@/app/actions/suppliers";
 import type { Supplier } from "@/lib/data-types";
 import { BOLIVIA_DEPARTMENTS, formatBs } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
@@ -14,7 +15,6 @@ type Props = {
 };
 
 const emptyForm = {
-  id: "" as string,
   name: "",
   location: "Santa Cruz",
   phone: "",
@@ -36,8 +36,6 @@ export function SuppliersManager({
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
 
-  const editing = Boolean(form.id);
-
   const visible = useMemo(() => {
     const active = suppliers.filter((s) => s.active);
     const q = normalize(query.trim());
@@ -54,34 +52,10 @@ export function SuppliersManager({
     setFeedback(null);
   }
 
-  function openCreate() {
-    setForm(emptyForm);
-    setShowForm(true);
-    setFeedback(null);
-  }
-
-  function openEdit(s: Supplier) {
-    setForm({
-      id: s.id,
-      name: s.name,
-      location: s.location || "Santa Cruz",
-      phone: s.phone ?? "",
-      notes: s.notes ?? "",
-    });
-    setShowForm(true);
-    setFeedback(null);
-  }
-
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await upsertSupplierAction({
-        id: form.id || undefined,
-        name: form.name,
-        location: form.location,
-        phone: form.phone,
-        notes: form.notes,
-      });
+      const result = await createSupplierAction(form);
       setFeedback(result.message);
       if (result.ok) resetForm();
     });
@@ -93,7 +67,11 @@ export function SuppliersManager({
         title="Proveedores"
         addLabel="Crear proveedor"
         showAdd={!showForm}
-        onAdd={openCreate}
+        onAdd={() => {
+          setForm(emptyForm);
+          setShowForm(true);
+          setFeedback(null);
+        }}
       />
 
       <ProveedoresAreaTabs />
@@ -102,9 +80,7 @@ export function SuppliersManager({
 
       {showForm ? (
         <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
-            {editing ? "Editar proveedor" : "Crear proveedor"}
-          </h3>
+          <h3 className="data-form-title">Crear proveedor</h3>
           <div className="field">
             <label htmlFor="sup-name">Nombre y apellido</label>
             <input
@@ -158,73 +134,76 @@ export function SuppliersManager({
               disabled={pending}
             />
           </div>
-          <div className="form-actions">
-            <button type="submit" className="btn-primary" disabled={pending}>
-              {pending
-                ? "Guardando…"
-                : editing
-                  ? "Guardar cambios"
-                  : "Crear proveedor"}
-            </button>
+          <div className="form-actions form-actions-split">
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-form"
               onClick={resetForm}
               disabled={pending}
             >
               Cancelar
+            </button>
+            <button
+              type="submit"
+              className="btn-primary btn-form"
+              disabled={pending || !form.name.trim()}
+            >
+              {pending ? "Guardando…" : "Guardar"}
             </button>
           </div>
           {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
 
-      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
+      {!showForm ? (
+        <>
+          <div className="search-bar">
+            <label htmlFor="sup-search" className="sr-only">
+              Buscar proveedor
+            </label>
+            <input
+              id="sup-search"
+              type="search"
+              placeholder="Buscar por nombre, apellido o celular…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
 
-      <div className="search-bar">
-        <label htmlFor="sup-search" className="sr-only">
-          Buscar proveedor
-        </label>
-        <input
-          id="sup-search"
-          type="search"
-          placeholder="Buscar por nombre, apellido o celular…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-
-      <ul className="data-list provider-cards">
-        {visible.map((s) => (
-          <li key={s.id}>
-            <button
-              type="button"
-              className="data-card provider-card"
-              onClick={() => openEdit(s)}
-            >
-              <div className="data-card-top">
-                <div>
-                  <p className="data-card-title">{s.name}</p>
-                  <p className="provider-dept">
-                    {s.location || "Sin departamento"}
-                  </p>
-                  {s.phone ? <p className="data-card-meta">{s.phone}</p> : null}
-                </div>
-                <p className="data-card-amount">
-                  {formatBs(debtsBySupplier[s.id] ?? 0)}
-                </p>
-              </div>
-            </button>
-          </li>
-        ))}
-        {visible.length === 0 ? (
-          <li className="data-empty">
-            {query.trim()
-              ? "Ningún proveedor coincide con la búsqueda."
-              : "No hay proveedores todavía."}
-          </li>
-        ) : null}
-      </ul>
+          <ul className="data-list provider-cards">
+            {visible.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/proveedores/${s.id}`}
+                  className="data-card provider-card"
+                >
+                  <div className="data-card-top">
+                    <div>
+                      <p className="data-card-title">{s.name}</p>
+                      <p className="provider-dept">
+                        {s.location || "Sin departamento"}
+                      </p>
+                      {s.phone ? (
+                        <p className="data-card-meta">{s.phone}</p>
+                      ) : null}
+                    </div>
+                    <p className="data-card-amount">
+                      {formatBs(debtsBySupplier[s.id] ?? 0)}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+            {visible.length === 0 ? (
+              <li className="data-empty">
+                {query.trim()
+                  ? "Ningún proveedor coincide con la búsqueda."
+                  : "No hay proveedores todavía."}
+              </li>
+            ) : null}
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }
