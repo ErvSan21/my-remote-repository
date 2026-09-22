@@ -56,6 +56,24 @@ export function VentasManager({
     [form.id, ventas],
   );
 
+  const unitPriceNum = Number(form.unit_price);
+  const qtyNum = Number(form.quantity_birds);
+  const hasValidPrice =
+    form.unit_price.trim() !== "" &&
+    Number.isFinite(unitPriceNum) &&
+    unitPriceNum > 0;
+  const hasValidQty =
+    editing ||
+    (form.quantity_birds.trim() !== "" &&
+      Number.isFinite(qtyNum) &&
+      qtyNum >= 1);
+  const canSubmitSale =
+    Boolean(form.client_id) &&
+    activeClients.length > 0 &&
+    hasValidPrice &&
+    hasValidQty &&
+    !pending;
+
   function resetForm() {
     setForm({
       ...emptyForm,
@@ -95,7 +113,12 @@ export function VentasManager({
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const priceRaw = form.unit_price.trim();
-    const unit_price = priceRaw === "" ? null : Number(priceRaw);
+    const unit_price = Number(priceRaw);
+
+    if (!Number.isFinite(unit_price) || unit_price <= 0) {
+      setFeedback("El precio unitario es obligatorio.");
+      return;
+    }
 
     startTransition(async () => {
       if (form.id) {
@@ -220,8 +243,9 @@ export function VentasManager({
                   <input
                     id="ve-price"
                     type="number"
-                    min={0}
+                    min={0.01}
                     step="0.01"
+                    required
                     value={form.unit_price}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, unit_price: e.target.value }))
@@ -243,7 +267,7 @@ export function VentasManager({
                 />
               </div>
               {!editing ? (
-                <div className="field check-inline-wrap">
+                <div className="form-check-row">
                   <label className="check-inline">
                     <input
                       type="checkbox"
@@ -256,10 +280,11 @@ export function VentasManager({
                       }
                       disabled={pending}
                     />
-                    Al contado (pagado ahora)
+                    <span>Al contado (pagado ahora)</span>
                   </label>
                   {form.pay_in_full ? (
                     <select
+                      className="form-check-select"
                       aria-label="Método de pago"
                       value={form.pay_method}
                       onChange={(e) =>
@@ -281,7 +306,7 @@ export function VentasManager({
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={pending || activeClients.length === 0}
+                  disabled={!canSubmitSale}
                 >
                   {pending
                     ? "Guardando…"

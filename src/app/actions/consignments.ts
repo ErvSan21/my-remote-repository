@@ -121,14 +121,13 @@ export async function createConsignmentAction(input: {
     return { ok: false, message: "Cantidad de aves inválida." };
   }
 
-  const unitPrice =
-    input.unit_price == null || Number.isNaN(Number(input.unit_price))
-      ? null
-      : Number(input.unit_price);
-  const total =
-    unitPrice == null ? null : Math.round(qty * unitPrice * 100) / 100;
+  const unitPrice = Number(input.unit_price);
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return { ok: false, message: "El precio unitario es obligatorio." };
+  }
+  const total = Math.round(qty * unitPrice * 100) / 100;
 
-  if (input.pay_in_full && (total == null || total <= 0)) {
+  if (input.pay_in_full && total <= 0) {
     return {
       ok: false,
       message: "Para venta al contado indica precio unitario.",
@@ -161,7 +160,7 @@ export async function createConsignmentAction(input: {
     return { ok: false, message: stock.message };
   }
 
-  if (input.pay_in_full && total != null && total > 0) {
+  if (input.pay_in_full && total > 0) {
     const pay = await createClientPaymentAction({
       client_id: input.client_id,
       consignment_id: row.id,
@@ -235,12 +234,9 @@ export async function updateConsignmentAction(input: {
   if (!input.id) return { ok: false, message: "Venta inválida." };
   if (!input.client_id) return { ok: false, message: "Elige un cliente." };
 
-  const unitPrice =
-    input.unit_price == null || Number.isNaN(Number(input.unit_price))
-      ? null
-      : Number(input.unit_price);
-  if (unitPrice != null && unitPrice < 0) {
-    return { ok: false, message: "Precio inválido." };
+  const unitPrice = Number(input.unit_price);
+  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+    return { ok: false, message: "El precio unitario es obligatorio." };
   }
 
   const supabase = await createClient();
@@ -253,10 +249,7 @@ export async function updateConsignmentAction(input: {
     return { ok: false, message: "Venta no encontrada." };
   }
 
-  const total =
-    unitPrice == null
-      ? null
-      : Math.round(Number(cons.quantity_birds) * unitPrice * 100) / 100;
+  const total = Math.round(Number(cons.quantity_birds) * unitPrice * 100) / 100;
 
   const { error } = await supabase
     .from("consignments")
