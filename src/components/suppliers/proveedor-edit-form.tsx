@@ -4,6 +4,7 @@ import { FormEvent, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateSupplierAction } from "@/app/actions/suppliers";
+import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Supplier } from "@/lib/data-types";
 import { BOLIVIA_DEPARTMENTS } from "@/lib/format";
 
@@ -43,17 +44,18 @@ export function ProveedorEditForm({ supplier }: Props) {
 
   return (
     <div className="data-stack">
-      <div className="venta-detail-nav">
-        <Link
-          href={`/proveedores/${supplier.id}`}
-          className="btn-secondary btn-form"
-        >
-          Volver
-        </Link>
-      </div>
-
       <header className="venta-detail-header">
-        <h2 className="module-title">{supplier.name}</h2>
+        <div className="venta-detail-title-row">
+          <Link
+            href={`/proveedores/${supplier.id}`}
+            className="btn-icon-back"
+            aria-label="Volver"
+            title="Volver"
+          >
+            <BackArrowIcon />
+          </Link>
+          <h2 className="module-title">{supplier.name}</h2>
+        </div>
       </header>
 
       <form className="data-form" onSubmit={onSubmit}>

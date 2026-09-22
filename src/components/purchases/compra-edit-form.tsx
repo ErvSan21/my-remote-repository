@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updatePurchaseAction } from "@/app/actions/purchases";
+import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Purchase, Supplier } from "@/lib/data-types";
 import { formatDateLaPaz } from "@/lib/format";
 
@@ -60,21 +61,22 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
 
   return (
     <div className="data-stack">
-      <div className="venta-detail-nav">
-        <Link
-          href={`/proveedores/compras/${purchase.id}`}
-          className="btn-secondary btn-form"
-        >
-          Volver
-        </Link>
-      </div>
-
       <header className="venta-detail-header">
-        <h2 className="module-title">
-          {purchase.suppliers?.name
-            ? `Compra · ${purchase.suppliers.name}`
-            : "Editar compra"}
-        </h2>
+        <div className="venta-detail-title-row">
+          <Link
+            href={`/proveedores/compras/${purchase.id}`}
+            className="btn-icon-back"
+            aria-label="Volver"
+            title="Volver"
+          >
+            <BackArrowIcon />
+          </Link>
+          <h2 className="module-title">
+            {purchase.suppliers?.name
+              ? `Compra · ${purchase.suppliers.name}`
+              : "Editar compra"}
+          </h2>
+        </div>
         <p className="data-card-meta">
           {formatDateLaPaz(purchase.created_at || purchase.purchase_date)}
         </p>

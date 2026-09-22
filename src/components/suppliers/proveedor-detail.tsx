@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Supplier } from "@/lib/data-types";
 import { formatBs } from "@/lib/format";
+import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
 import { ProveedoresAreaTabs } from "@/components/proveedores/proveedores-area-tabs";
 
@@ -15,16 +16,18 @@ type Props = {
 export function ProveedorDetail({ supplier, debt, canEdit }: Props) {
   return (
     <div className="data-stack">
-      <div className="venta-detail-nav">
-        <Link href="/proveedores" className="btn-secondary btn-form">
-          Volver
-        </Link>
-      </div>
-
       <ProveedoresAreaTabs />
 
       <header className="venta-detail-header">
         <div className="venta-detail-title-row">
+          <Link
+            href="/proveedores"
+            className="btn-icon-back"
+            aria-label="Volver"
+            title="Volver"
+          >
+            <BackArrowIcon />
+          </Link>
           <h2 className="module-title">{supplier.name}</h2>
           {canEdit ? (
             <Link

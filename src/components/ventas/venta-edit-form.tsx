@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateConsignmentAction } from "@/app/actions/consignments";
+import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Client, VentaRow } from "@/lib/data-types";
 import { formatDateTimeLaPaz, formatVentaTitle } from "@/lib/format";
 
@@ -54,14 +55,18 @@ export function VentaEditForm({ venta, clients }: Props) {
 
   return (
     <div className="data-stack">
-      <div className="venta-detail-nav">
-        <Link href={`/ventas/${venta.id}`} className="btn-secondary btn-form">
-          Volver
-        </Link>
-      </div>
-
       <header className="venta-detail-header">
-        <h2 className="module-title">{formatVentaTitle(venta.sale_number)}</h2>
+        <div className="venta-detail-title-row">
+          <Link
+            href={`/ventas/${venta.id}`}
+            className="btn-icon-back"
+            aria-label="Volver"
+            title="Volver"
+          >
+            <BackArrowIcon />
+          </Link>
+          <h2 className="module-title">{formatVentaTitle(venta.sale_number)}</h2>
+        </div>
         <p className="data-card-meta">
           {formatDateTimeLaPaz(venta.created_at)}
         </p>

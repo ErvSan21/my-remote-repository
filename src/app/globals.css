@@ -1149,11 +1149,6 @@ a.data-card:focus-visible {
   padding-bottom: 0.85rem;
 }
 
-.venta-detail-nav {
-  display: flex;
-  align-items: center;
-}
-
 .venta-detail-header {
   display: flex;
   flex-direction: column;
@@ -1163,28 +1158,38 @@ a.data-card:focus-visible {
 .venta-detail-title-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
+.venta-detail-title-row .module-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-icon-back,
 .btn-icon-edit {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: #fff;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink-soft);
   text-decoration: none;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
+.btn-icon-back:hover,
 .btn-icon-edit:hover {
   color: var(--accent-deep);
-  border-color: rgba(196, 92, 38, 0.35);
-  background: rgba(196, 92, 38, 0.06);
+  background: transparent;
+  border: none;
 }
 
 .data-form-stack {
