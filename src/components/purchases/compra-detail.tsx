@@ -304,7 +304,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
             Eliminar compra
           </h3>
           <p className="data-card-meta">
-            Se borrará esta compra. Si las aves ya salieron del stock, no se puede eliminar.
+            Se borrará esta compra y los pagos ligados a ella. Si las aves ya salieron del stock, no se puede eliminar.
           </p>
           <div className="form-actions form-actions-split">
             <button
