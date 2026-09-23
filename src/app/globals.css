@@ -752,6 +752,12 @@ a {
   box-shadow: none;
 }
 
+.btn-primary:disabled {
+  opacity: 1;
+  background: #e2e8f0;
+  color: #475569;
+}
+
 .btn-secondary.is-disabled {
   pointer-events: none;
 }
@@ -1543,7 +1549,13 @@ a.data-card:focus-visible {
 .compra-card-right,
 .venta-card-right {
   min-width: 0;
-  max-width: 46%;
+}
+
+.venta-card-body .data-card-meta,
+.compra-card-body .data-card-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .compra-card-body .data-card-title,
