@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { boundedText, isIsoDate, isUuid, parseMoney, parsePositiveInt } from "@/lib/validation";
-import { paidTowardPurchase, statusAfterPayment } from "@/lib/debts";
+import { paidTowardPurchase, purchaseBalance, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
 import type { PurchaseStatus } from "@/lib/types";
 
@@ -17,13 +17,27 @@ export async function listPurchasesAction(): Promise<{
 }> {
   await requireAdmin();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("purchases")
-    .select(PURCHASE_SELECT)
-    .order("created_at", { ascending: false });
+  const [purchasesRes, paymentsRes] = await Promise.all([
+    supabase
+      .from("purchases")
+      .select(PURCHASE_SELECT)
+      .order("created_at", { ascending: false }),
+    supabase.from("supplier_payments").select("purchase_id, amount"),
+  ]);
 
-  if (error) return { purchases: [], error: error.message };
-  return { purchases: (data ?? []) as unknown as Purchase[], error: null };
+  if (purchasesRes.error) {
+    return { purchases: [], error: purchasesRes.error.message };
+  }
+  if (paymentsRes.error) {
+    return { purchases: [], error: paymentsRes.error.message };
+  }
+  return {
+    purchases: withPaidAmounts(
+      (purchasesRes.data ?? []) as unknown as Purchase[],
+      paymentsRes.data ?? [],
+    ),
+    error: null,
+  };
 }
 
 export async function getPurchaseAction(id: string): Promise<{
@@ -33,14 +47,40 @@ export async function getPurchaseAction(id: string): Promise<{
   await requireAdmin();
   if (!isUuid(id)) return { purchase: null, error: "Compra no encontrada." };
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("purchases")
-    .select(PURCHASE_SELECT)
-    .eq("id", id)
-    .maybeSingle();
-  if (error) return { purchase: null, error: error.message };
-  if (!data) return { purchase: null, error: "Compra no encontrada." };
-  return { purchase: data as unknown as Purchase, error: null };
+  const [purchaseRes, paymentsRes] = await Promise.all([
+    supabase.from("purchases").select(PURCHASE_SELECT).eq("id", id).maybeSingle(),
+    supabase
+      .from("supplier_payments")
+      .select("purchase_id, amount")
+      .eq("purchase_id", id),
+  ]);
+  if (purchaseRes.error) return { purchase: null, error: purchaseRes.error.message };
+  if (paymentsRes.error) return { purchase: null, error: paymentsRes.error.message };
+  if (!purchaseRes.data) return { purchase: null, error: "Compra no encontrada." };
+  const [purchase] = withPaidAmounts(
+    [purchaseRes.data as unknown as Purchase],
+    paymentsRes.data ?? [],
+  );
+  return { purchase, error: null };
+}
+
+function withPaidAmounts(
+  purchases: Purchase[],
+  payments: { purchase_id: string | null; amount: number | null }[],
+): Purchase[] {
+  const paidById = new Map<string, number>();
+  for (const payment of payments) {
+    if (!payment.purchase_id) continue;
+    const prev = paidById.get(payment.purchase_id) ?? 0;
+    paidById.set(payment.purchase_id, prev + Number(payment.amount ?? 0));
+  }
+  return purchases.map((purchase) => {
+    const balance = purchaseBalance(
+      purchase.total_amount,
+      paidById.get(purchase.id) ?? 0,
+    );
+    return { ...purchase, paid_amount: balance.paid_amount };
+  });
 }
 
 function resolveAmounts(quantity: number, unitPrice: number | null) {

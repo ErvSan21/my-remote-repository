@@ -95,6 +95,31 @@ export function consignmentStatusForBalance(
   return "open";
 }
 
+/** Saldo de una compra. Sin precio no hay deuda numérica. */
+export function purchaseBalance(total: number | null, paid: number) {
+  const paidAmount = Number.isFinite(paid) ? paid : 0;
+  if (total == null || !Number.isFinite(Number(total))) {
+    return {
+      has_price: false,
+      paid_amount: paidAmount,
+      pending_amount: null as number | null,
+      is_paid: false,
+    };
+  }
+  const totalN = Number(total);
+  const pendingRaw = Math.max(
+    0,
+    Math.round((totalN - paidAmount) * 100) / 100,
+  );
+  const is_paid = totalN > 0 && pendingRaw <= 0.001;
+  return {
+    has_price: true,
+    paid_amount: paidAmount,
+    pending_amount: is_paid ? 0 : pendingRaw,
+    is_paid,
+  };
+}
+
 /** true si `amount` deja el saldo por debajo de cero (total desconocido = sin tope). */
 export function paymentExceedsBalance(
   total: number | null,

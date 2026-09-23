@@ -1566,11 +1566,87 @@ a.data-card:focus-visible {
   overflow-wrap: normal;
 }
 
+.compra-qty {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
 .compra-amount {
   margin: 0.2rem 0 0;
   font-weight: 750;
   color: var(--accent);
   font-size: 0.95rem;
+}
+
+.compra-define-price {
+  margin: 0.2rem 0 0;
+  font-weight: 750;
+  color: var(--navy);
+  font-size: 0.92rem;
+}
+
+.pay-dialog {
+  width: min(100% - 2rem, 24rem);
+  margin: auto;
+  border: none;
+  border-radius: var(--radius);
+  padding: 1.1rem 1rem 1rem;
+  background: var(--bg-panel);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+.pay-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.pay-dialog-form.data-form {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+}
+
+.compra-card-right .venta-status-pill {
+  max-width: 7.4rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.pay-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.pay-mode-btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+  border-radius: var(--radius-btn);
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pay-mode-btn[aria-pressed="true"] {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.pay-mode-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .compra-card-right {

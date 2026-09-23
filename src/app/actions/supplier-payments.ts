@@ -184,6 +184,7 @@ export async function createSupplierPaymentAction(input: {
 
   revalidatePath("/pagos-proveedores");
   revalidatePath("/compras");
+  if (input.purchase_id) revalidatePath(`/compras/${input.purchase_id}`);
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago registrado." };
@@ -320,6 +321,8 @@ export async function updateSupplierPaymentAction(input: {
 
   revalidatePath("/pagos-proveedores");
   revalidatePath("/compras");
+  if (previousPurchaseId) revalidatePath(`/compras/${previousPurchaseId}`);
+  if (input.purchase_id) revalidatePath(`/compras/${input.purchase_id}`);
   revalidatePath("/proveedores");
   revalidatePath("/");
   return { ok: true, message: "Pago actualizado." };

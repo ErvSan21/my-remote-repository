@@ -4,11 +4,8 @@ import { FormEvent, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { createPurchaseAction } from "@/app/actions/purchases";
 import type { Purchase, Supplier } from "@/lib/data-types";
-import {
-  PURCHASE_STATUS_LABEL,
-  formatBs,
-  formatWhenLaPaz,
-} from "@/lib/format";
+import { formatBs } from "@/lib/format";
+import { purchaseBalance } from "@/lib/debts";
 import { PageHeader } from "@/components/ui/page-header";
 import { parsePositiveInt } from "@/lib/numbers";
 
@@ -330,7 +327,10 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
           <ul className="data-list">
             {visible.map((p) => {
-              const isPaid = p.status === "paid";
+              const balance = purchaseBalance(
+                p.total_amount,
+                p.paid_amount ?? 0,
+              );
               return (
                 <li key={p.id}>
                   <Link href={`/compras/${p.id}`} className="data-card compra-card">
@@ -353,23 +353,27 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                         <p className="data-card-title">
                           {p.suppliers?.name ?? "Proveedor"}
                         </p>
-                        <p className="compra-amount">{formatBs(p.total_amount)}</p>
+                        <p className="compra-qty">
+                          {p.quantity_birds} pollos
+                        </p>
+                        {balance.has_price ? (
+                          <p className="compra-amount">
+                            Debe {formatBs(balance.pending_amount)}
+                          </p>
+                        ) : (
+                          <p className="compra-define-price">Definir precio</p>
+                        )}
                       </div>
                       <div className="compra-card-right">
-                        {isPaid ? (
-                          <span className="venta-status-pill status-paid">
-                            Pagado
-                          </span>
-                        ) : (
-                          <span className="compra-when">
-                            {formatWhenLaPaz(p.created_at || p.purchase_date)}
-                          </span>
-                        )}
-                        {!isPaid ? (
-                          <span className={`status-pill status-${p.status}`}>
-                            {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
-                          </span>
-                        ) : null}
+                        <span
+                          className={
+                            balance.is_paid
+                              ? "venta-status-pill status-paid"
+                              : "venta-status-pill status-pending"
+                          }
+                        >
+                          {balance.is_paid ? "Pagado" : "Pendiente de pago"}
+                        </span>
                       </div>
                     </div>
                   </Link>

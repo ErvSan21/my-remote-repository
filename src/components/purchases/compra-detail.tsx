@@ -1,13 +1,17 @@
 "use client";
 
+import { FormEvent, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createSupplierPaymentAction } from "@/app/actions/supplier-payments";
 import type { Purchase } from "@/lib/data-types";
+import { purchaseBalance } from "@/lib/debts";
 import {
-  PURCHASE_STATUS_LABEL,
   formatBs,
   formatDateLaPaz,
   formatDateTimeLaPaz,
 } from "@/lib/format";
+import type { PaymentMethod } from "@/lib/types";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
 
@@ -16,10 +20,66 @@ type Props = {
   canEdit: boolean;
 };
 
+type PayMode = "partial" | "total";
+
 export function CompraDetail({ purchase, canEdit }: Props) {
+  const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [mode, setMode] = useState<PayMode>("partial");
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
   const title = purchase.suppliers?.name
     ? `Compra · ${purchase.suppliers.name}`
     : "Compra";
+  const payAmount =
+    mode === "total" ? balance.pending_amount : Number(amount);
+  const canSave =
+    balance.has_price &&
+    balance.pending_amount != null &&
+    payAmount != null &&
+    Number.isFinite(payAmount) &&
+    payAmount > 0 &&
+    payAmount <= balance.pending_amount + 0.001 &&
+    !pending;
+
+  function openPay() {
+    setMode("partial");
+    setAmount("");
+    setMethod("cash");
+    setFeedback(null);
+    if (dialogRef.current && !dialogRef.current.open) {
+      dialogRef.current.showModal();
+    }
+  }
+
+  function closePay() {
+    dialogRef.current?.close();
+  }
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSave || payAmount == null || !balance.pending_amount) return;
+    setFeedback(null);
+    startTransition(async () => {
+      const result = await createSupplierPaymentAction({
+        supplier_id: purchase.supplier_id,
+        purchase_id: purchase.id,
+        amount: Math.round(payAmount * 100) / 100,
+        method,
+        notes: "",
+      });
+      if (!result.ok) {
+        setFeedback(result.message);
+        return;
+      }
+      dialogRef.current?.close();
+      router.refresh();
+    });
+  }
 
   return (
     <div className="data-stack">
@@ -63,7 +123,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
         <p className="data-card-meta">
           Fecha compra: {formatDateLaPaz(purchase.purchase_date)}
         </p>
-        <p className="data-card-meta">Cantidad: {purchase.quantity_birds}</p>
+        <p className="data-card-meta">Cantidad: {purchase.quantity_birds} pollos</p>
         <p className="data-card-meta">
           Precio unit.:{" "}
           {purchase.unit_price == null
@@ -71,16 +131,126 @@ export function CompraDetail({ purchase, canEdit }: Props) {
             : formatBs(purchase.unit_price)}
         </p>
         <p className="data-card-meta">
-          Total: {formatBs(purchase.total_amount)}
+          {balance.has_price ? (
+            <>Debe: {formatBs(balance.pending_amount)}</>
+          ) : (
+            <span className="compra-define-price">Definir precio</span>
+          )}
         </p>
         <p className="data-card-meta">
-          Estado:{" "}
-          {PURCHASE_STATUS_LABEL[purchase.status] ?? purchase.status}
+          <span
+            className={
+              balance.is_paid
+                ? "venta-status-pill status-paid"
+                : "venta-status-pill status-pending"
+            }
+          >
+            {balance.is_paid ? "Pagado" : "Pendiente de pago"}
+          </span>
         </p>
         {purchase.notes ? (
           <p className="data-card-meta">Notas: {purchase.notes}</p>
         ) : null}
       </section>
+
+      {balance.has_price && !balance.is_paid ? (
+        <button type="button" className="btn-primary btn-form" onClick={openPay}>
+          Cancelar
+        </button>
+      ) : null}
+
+      <dialog
+        ref={dialogRef}
+        className="pay-dialog"
+        aria-labelledby="pay-dialog-title"
+        onClick={(e) => {
+          if (e.target === dialogRef.current) closePay();
+        }}
+        onClose={() => setFeedback(null)}
+      >
+        <form className="data-form pay-dialog-form" onSubmit={onSubmit}>
+          <h3 id="pay-dialog-title" className="data-form-title">
+            Cancelar compra
+          </h3>
+          <p className="data-card-meta">
+            Pendiente: {formatBs(balance.pending_amount)}
+          </p>
+          <div className="pay-mode" role="group" aria-label="Tipo de pago">
+            <button
+              type="button"
+              className="pay-mode-btn"
+              aria-pressed={mode === "partial"}
+              onClick={() => setMode("partial")}
+              disabled={pending}
+            >
+              Pago parcial
+            </button>
+            <button
+              type="button"
+              className="pay-mode-btn"
+              aria-pressed={mode === "total"}
+              onClick={() => {
+                setMode("total");
+                setAmount(
+                  balance.pending_amount == null
+                    ? ""
+                    : String(balance.pending_amount),
+                );
+              }}
+              disabled={pending}
+            >
+              Pago total
+            </button>
+          </div>
+          <div className="field-row">
+            <div className="field">
+              <label htmlFor="compra-pay-amt">Monto (Bs)</label>
+              <input
+                id="compra-pay-amt"
+                type="number"
+                min={0.01}
+                max={balance.pending_amount ?? undefined}
+                step="0.01"
+                required
+                value={mode === "total" ? (balance.pending_amount ?? "") : amount}
+                onChange={(e) => setAmount(e.target.value)}
+                readOnly={mode === "total"}
+                disabled={pending}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="compra-pay-method">Método</label>
+              <select
+                id="compra-pay-method"
+                value={method}
+                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                disabled={pending}
+              >
+                <option value="cash">Efectivo</option>
+                <option value="qr">QR</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-actions form-actions-split">
+            <button
+              type="button"
+              className="btn-secondary btn-form"
+              onClick={closePay}
+              disabled={pending}
+            >
+              Cerrar
+            </button>
+            <button type="submit" className="btn-primary btn-form" disabled={!canSave}>
+              {pending ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+          {feedback ? (
+            <p className="form-feedback" role="alert">
+              {feedback}
+            </p>
+          ) : null}
+        </form>
+      </dialog>
     </div>
   );
 }
