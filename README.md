@@ -92,7 +92,7 @@ npm run dev
 | `admin` | Dashboard + todos los módulos excepto Usuarios |
 | `superadmin` | Todo + `/usuarios` (reset password) |
 
-La UI oculta menús; middleware + RLS refuerzan el acceso.
+La UI oculta menús; el proxy de sesión, las server actions y RLS refuerzan el acceso.
 
 ---
 
@@ -110,7 +110,7 @@ La UI oculta menús; middleware + RLS refuerzan el acceso.
 ## 7. Estructura
 
 ```
-src/middleware.ts          → sesión + redirects auth/rol
+src/proxy.ts               → sesión + redirects auth/rol (Next.js 16)
 src/app/login/             → login
 src/app/(app)/             → shell protegido
 src/app/actions/           → logout, reset password

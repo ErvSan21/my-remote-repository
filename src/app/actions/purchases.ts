@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { boundedText, isIsoDate, isUuid, parseMoney, parsePositiveInt } from "@/lib/validation";
 import { paidTowardPurchase, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
 import type { PurchaseStatus } from "@/lib/types";
@@ -30,7 +31,7 @@ export async function getPurchaseAction(id: string): Promise<{
   error: string | null;
 }> {
   await requireAdmin();
-  if (!id) return { purchase: null, error: "Compra inválida." };
+  if (!isUuid(id)) return { purchase: null, error: "Compra no encontrada." };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("purchases")
@@ -66,15 +67,23 @@ export async function createPurchaseAction(input: {
   notes: string;
 }): Promise<ActionResult> {
   const auth = await requireAdmin();
-  const qty = Number(input.quantity_birds);
-  if (!input.supplier_id) {
+  const qty = parsePositiveInt(input.quantity_birds);
+  const notes = boundedText(input.notes);
+  if (!isUuid(input.supplier_id)) {
     return { ok: false, message: "Elige un proveedor." };
   }
-  if (!Number.isFinite(qty) || qty <= 0) {
+  if (qty == null) {
     return { ok: false, message: "La cantidad de aves debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
+  if (input.purchase_date && !isIsoDate(input.purchase_date)) {
+    return { ok: false, message: "Fecha inválida." };
+  }
+  if (input.unit_price != null && parseMoney(input.unit_price) == null) {
+    return { ok: false, message: "Precio inválido." };
+  }
 
-  const amounts = resolveAmounts(qty, input.unit_price);
+  const amounts = resolveAmounts(qty, input.unit_price == null ? null : parseMoney(input.unit_price));
   const supabase = await createClient();
   const { data: purchase, error } = await supabase
     .from("purchases")
@@ -85,7 +94,7 @@ export async function createPurchaseAction(input: {
       unit_price: amounts.unit_price,
       total_amount: amounts.total_amount,
       status: amounts.status,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
       created_by: auth.user.id,
     })
     .select("id")
@@ -132,13 +141,22 @@ export async function updatePurchaseAction(input: {
   notes: string;
 }): Promise<ActionResult> {
   await requireSuperadmin();
-  const qty = Number(input.quantity_birds);
-  if (!input.id) return { ok: false, message: "Compra inválida." };
-  if (!Number.isFinite(qty) || qty <= 0) {
+  const qty = parsePositiveInt(input.quantity_birds);
+  const notes = boundedText(input.notes);
+  if (!isUuid(input.id)) return { ok: false, message: "Compra inválida." };
+  if (!isUuid(input.supplier_id)) return { ok: false, message: "Elige un proveedor." };
+  if (qty == null) {
     return { ok: false, message: "La cantidad debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
+  if (!isIsoDate(input.purchase_date)) {
+    return { ok: false, message: "Fecha inválida." };
+  }
+  if (input.unit_price != null && parseMoney(input.unit_price) == null) {
+    return { ok: false, message: "Precio inválido." };
+  }
 
-  const amounts = resolveAmounts(qty, input.unit_price);
+  const amounts = resolveAmounts(qty, input.unit_price == null ? null : parseMoney(input.unit_price));
   const supabase = await createClient();
 
   // Recalcular estado según pagos ya hechos si hay precio
@@ -168,7 +186,7 @@ export async function updatePurchaseAction(input: {
       unit_price: amounts.unit_price,
       total_amount: amounts.total_amount,
       status,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.id);

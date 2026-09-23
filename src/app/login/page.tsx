@@ -1,3 +1,4 @@
+import { safeInternalPath } from "@/lib/auth/redirects";
 import { LoginForm } from "./login-form";
 import {
   getPublicEnvStatus,
@@ -51,7 +52,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         <LoginForm
-          nextPath={params.next}
+          nextPath={safeInternalPath(params.next) ?? undefined}
           setupMissing={setupMissing}
           accountDisabled={params.disabled === "1"}
           supabaseUrl={url}

@@ -1,6 +1,10 @@
 import type { AppRole, NavItem } from "@/lib/types";
 import { APP_NAV } from "@/lib/nav";
 
+export function isAppRole(value: unknown): value is AppRole {
+  return value === "vendedora" || value === "admin" || value === "superadmin";
+}
+
 function isVendedoraPath(path: string): boolean {
   if (path === "/ventas") return true;
   if (/^\/ventas\/[^/]+\/editar\/?$/.test(path)) return false;

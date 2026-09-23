@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { tryRpc } from "@/lib/status-refresh";
+import { boundedText, isUuid, parseMoney } from "@/lib/validation";
 import {
   debtForSupplier,
   paidTowardPurchase,
@@ -113,14 +115,19 @@ export async function createSupplierPaymentAction(input: {
   notes: string;
 }): Promise<ActionResult> {
   const auth = await requireAdmin();
-  const amount = Number(input.amount);
+  const amount = parseMoney(input.amount);
+  const notes = boundedText(input.notes);
 
-  if (!input.supplier_id) {
+  if (!isUuid(input.supplier_id)) {
     return { ok: false, message: "Elige un proveedor." };
   }
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (input.purchase_id && !isUuid(input.purchase_id)) {
+    return { ok: false, message: "Compra inválida." };
+  }
+  if (amount == null) {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (input.method !== "cash" && input.method !== "qr") {
     return { ok: false, message: "Método inválido (efectivo o QR)." };
   }
@@ -153,43 +160,14 @@ export async function createSupplierPaymentAction(input: {
     purchase_id: input.purchase_id,
     amount,
     method: input.method,
-    notes: input.notes.trim() || null,
+    notes: notes.value || null,
     recorded_by: auth.user.id,
     paid_at: new Date().toISOString(),
   });
 
   if (error) return { ok: false, message: error.message };
 
-  if (input.purchase_id) {
-    const { data: payRows } = await supabase
-      .from("supplier_payments")
-      .select("amount, purchase_id, supplier_id")
-      .eq("purchase_id", input.purchase_id);
-
-    const { data: purchase } = await supabase
-      .from("purchases")
-      .select("total_amount")
-      .eq("id", input.purchase_id)
-      .maybeSingle();
-
-    const paid = paidTowardPurchase(
-      input.purchase_id,
-      (payRows ?? []).map((p) => ({
-        supplier_id: p.supplier_id as string,
-        purchase_id: p.purchase_id as string | null,
-        amount: Number(p.amount),
-      })),
-    );
-    const status = statusAfterPayment(
-      purchase?.total_amount == null ? null : Number(purchase.total_amount),
-      paid,
-    );
-
-    await supabase
-      .from("purchases")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", input.purchase_id);
-  }
+  await refreshPurchaseStatus(supabase, input.purchase_id);
 
   revalidatePath("/pagos-proveedores");
   revalidatePath("/compras");
@@ -203,6 +181,11 @@ async function refreshPurchaseStatus(
   purchaseId: string | null,
 ) {
   if (!purchaseId) return;
+  const rpc = await tryRpc(supabase, "refresh_purchase_payment_status", {
+    p_purchase_id: purchaseId,
+  });
+  if (rpc !== "missing") return;
+
   const { data: payRows } = await supabase
     .from("supplier_payments")
     .select("amount, purchase_id, supplier_id")
@@ -239,15 +222,20 @@ export async function updateSupplierPaymentAction(input: {
   notes: string;
 }): Promise<ActionResult> {
   await requireAdmin();
-  const amount = Number(input.amount);
+  const amount = parseMoney(input.amount);
+  const notes = boundedText(input.notes);
 
-  if (!input.id) return { ok: false, message: "Pago inválido." };
-  if (!input.supplier_id) {
+  if (!isUuid(input.id)) return { ok: false, message: "Pago inválido." };
+  if (!isUuid(input.supplier_id)) {
     return { ok: false, message: "Elige un proveedor." };
   }
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (input.purchase_id && !isUuid(input.purchase_id)) {
+    return { ok: false, message: "Compra inválida." };
+  }
+  if (amount == null) {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (input.method !== "cash" && input.method !== "qr") {
     return { ok: false, message: "Método inválido (efectivo o QR)." };
   }
@@ -291,7 +279,7 @@ export async function updateSupplierPaymentAction(input: {
       purchase_id: input.purchase_id,
       amount,
       method: input.method,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
     })
     .eq("id", input.id);
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { boundedText, isUuid } from "@/lib/validation";
 import type { ActionResult, Supplier } from "@/lib/data-types";
 
 function revalidateSuppliers(id?: string) {
@@ -41,7 +42,7 @@ export async function getSupplierAction(id: string): Promise<{
   error: string | null;
 }> {
   await requireAdmin();
-  if (!id) return { supplier: null, error: "Proveedor inválido." };
+  if (!isUuid(id)) return { supplier: null, error: "Proveedor no encontrado." };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("suppliers")
@@ -60,17 +61,23 @@ export async function createSupplierAction(input: {
   notes: string;
 }): Promise<ActionResult & { id?: string }> {
   await requireAdmin();
-  const name = input.name.trim();
-  if (!name) return { ok: false, message: "El nombre es obligatorio." };
+  const name = boundedText(input.name, 200);
+  const location = boundedText(input.location, 120);
+  const phone = boundedText(input.phone, 40);
+  const notes = boundedText(input.notes);
+  if (!name.ok || !name.value) return { ok: false, message: "El nombre es obligatorio." };
+  if (!location.ok || !phone.ok || !notes.ok) {
+    return { ok: false, message: "Texto demasiado largo." };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("suppliers")
     .insert({
-      name,
-      location: input.location.trim() || null,
-      phone: input.phone.trim() || null,
-      notes: input.notes.trim() || null,
+      name: name.value,
+      location: location.value || null,
+      phone: phone.value || null,
+      notes: notes.value || null,
       active: true,
     })
     .select("id")
@@ -92,18 +99,24 @@ export async function updateSupplierAction(input: {
   active?: boolean;
 }): Promise<ActionResult> {
   await requireSuperadmin();
-  if (!input.id) return { ok: false, message: "Proveedor inválido." };
-  const name = input.name.trim();
-  if (!name) return { ok: false, message: "El nombre es obligatorio." };
+  const name = boundedText(input.name, 200);
+  const location = boundedText(input.location, 120);
+  const phone = boundedText(input.phone, 40);
+  const notes = boundedText(input.notes);
+  if (!isUuid(input.id)) return { ok: false, message: "Proveedor inválido." };
+  if (!name.ok || !name.value) return { ok: false, message: "El nombre es obligatorio." };
+  if (!location.ok || !phone.ok || !notes.ok) {
+    return { ok: false, message: "Texto demasiado largo." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("suppliers")
     .update({
-      name,
-      location: input.location.trim() || null,
-      phone: input.phone.trim() || null,
-      notes: input.notes.trim() || null,
+      name: name.value,
+      location: location.value || null,
+      phone: phone.value || null,
+      notes: notes.value || null,
       active: input.active ?? true,
       updated_at: new Date().toISOString(),
     })
@@ -141,6 +154,7 @@ export async function setSupplierActiveAction(
   active: boolean,
 ): Promise<ActionResult> {
   await requireSuperadmin();
+  if (!isUuid(id)) return { ok: false, message: "Proveedor inválido." };
   const supabase = await createClient();
   const { error } = await supabase
     .from("suppliers")

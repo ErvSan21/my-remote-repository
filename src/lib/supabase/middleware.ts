@@ -1,19 +1,37 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { canAccessPath, homePathForRole, isAppRole } from "@/lib/auth/permissions";
+import { safeInternalPath } from "@/lib/auth/redirects";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
-import {
-  canAccessPath,
-  homePathForRole,
-} from "@/lib/auth/permissions";
-import type { AppRole } from "@/lib/types";
+
+type PendingCookie = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
 function isLoginPath(pathname: string): boolean {
   return pathname === "/login" || pathname.startsWith("/login/");
 }
 
+function applySession(
+  response: NextResponse,
+  cookies: PendingCookie[],
+  headers: Record<string, string>,
+) {
+  cookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
+}
+
 /**
- * Refreshes the auth session cookies (official @supabase/ssr middleware pattern)
+ * Refreshes the auth session cookies (official @supabase/ssr pattern)
  * and enforces login + role redirects for MAC.
+ * Used by src/proxy.ts (Next.js 16 proxy; formerly middleware).
  */
 export async function updateSession(request: NextRequest) {
   const url = getSupabaseUrl();
@@ -39,31 +57,47 @@ export async function updateSession(request: NextRequest) {
     if (!isLogin) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
+      redirectUrl.search = "";
       redirectUrl.searchParams.set("setup", "1");
       return NextResponse.redirect(redirectUrl);
     }
-    // Already on login: strip nothing; page decides from real env status
     return NextResponse.next();
   }
 
   let supabaseResponse = NextResponse.next({ request });
+  const pendingCookies: PendingCookie[] = [];
+  const cacheHeaders: Record<string, string> = {};
 
   const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
-        supabaseResponse = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
+        cookiesToSet.forEach((cookie) => {
+          const index = pendingCookies.findIndex((item) => item.name === cookie.name);
+          if (index >= 0) pendingCookies.splice(index, 1);
+          pendingCookies.push(cookie);
         });
+        Object.assign(cacheHeaders, headers);
+        supabaseResponse = NextResponse.next({ request });
+        applySession(supabaseResponse, pendingCookies, cacheHeaders);
       },
     },
   });
+
+  const redirectTo = (path: string, params: Record<string, string | null>) => {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = path;
+    redirectUrl.search = "";
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) redirectUrl.searchParams.set(key, value);
+    });
+    return applySession(NextResponse.redirect(redirectUrl), pendingCookies, cacheHeaders);
+  };
 
   // Important: getUser() validates JWT and triggers cookie refresh via setAll.
   const {
@@ -71,60 +105,38 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user && !isLogin) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(redirectUrl);
+    return redirectTo("/login", { next: safeInternalPath(pathname) });
   }
 
   if (!user && isLogin) {
-    // Env OK but URL still has ?setup=1 from before — clean it so the form enables.
     if (request.nextUrl.searchParams.get("setup") === "1") {
-      const clean = request.nextUrl.clone();
-      clean.searchParams.delete("setup");
-      return NextResponse.redirect(clean);
+      return redirectTo("/login", {});
     }
     return supabaseResponse;
   }
 
-  let role: AppRole = "vendedora";
-  let active = true;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, active")
+    .eq("id", user!.id)
+    .maybeSingle();
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, active")
-      .eq("id", user.id)
-      .maybeSingle();
+  const role = isAppRole(profile?.role) ? profile.role : null;
+  const active = Boolean(profile && profile.active !== false && role);
 
-    if (profile?.role) {
-      role = profile.role as AppRole;
-    }
-    if (profile && profile.active === false) {
-      active = false;
-    }
-  }
-
-  if (user && !active) {
+  if (!active || !role) {
     await supabase.auth.signOut();
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("disabled", "1");
-    return NextResponse.redirect(redirectUrl);
+    return redirectTo("/login", {
+      disabled: profile && profile.active === false ? "1" : null,
+    });
   }
 
-  if (user && isLogin) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = homePathForRole(role);
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+  if (isLogin) {
+    return redirectTo(homePathForRole(role), {});
   }
 
-  if (user && !canAccessPath(pathname, role)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = homePathForRole(role);
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+  if (!canAccessPath(pathname, role)) {
+    return redirectTo(homePathForRole(role), {});
   }
 
   return supabaseResponse;

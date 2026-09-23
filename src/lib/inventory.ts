@@ -1,14 +1,29 @@
-"use server";
-
+import { getAuthContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/types";
 
-/** Entrada de stock al registrar una compra. */
+function isStockRole(role: AppRole): boolean {
+  return role === "admin" || role === "superadmin";
+}
+
+async function requireStockActor(userId: string) {
+  const auth = await getAuthContext();
+  if (!auth || !isStockRole(auth.profile.role) || auth.user.id !== userId) {
+    return null;
+  }
+  return auth;
+}
+
+/** Entrada de stock al registrar una compra. No es una server action pública. */
 export async function addStockFromPurchase(
   purchaseId: string,
   quantityBirds: number,
   userId: string,
   label?: string,
 ) {
+  if (!(await requireStockActor(userId))) {
+    return { ok: false as const, message: "No autorizado." };
+  }
   const supabase = await createClient();
   const { data: lot, error: lotError } = await supabase
     .from("inventory_lots")
@@ -45,6 +60,9 @@ export async function removeStockForConsignment(
   quantityBirds: number,
   userId: string,
 ) {
+  if (!(await requireStockActor(userId))) {
+    return { ok: false as const, message: "No autorizado." };
+  }
   const supabase = await createClient();
   const { data: lots, error } = await supabase
     .from("inventory_lots")
@@ -97,6 +115,8 @@ export async function removeStockForConsignment(
 }
 
 export async function getPolloDisponible(): Promise<number> {
+  const auth = await getAuthContext();
+  if (!auth || !isStockRole(auth.profile.role)) return 0;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("inventory_lots")
