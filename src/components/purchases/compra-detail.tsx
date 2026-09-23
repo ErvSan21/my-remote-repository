@@ -132,7 +132,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
         </p>
         <p className="data-card-meta">
           {balance.has_price ? (
-            <>Debe: {formatBs(balance.pending_amount)}</>
+            <>{formatBs(balance.pending_amount)}</>
           ) : (
             <span className="compra-define-price">Definir precio</span>
           )}
@@ -141,11 +141,11 @@ export function CompraDetail({ purchase, canEdit }: Props) {
           <span
             className={
               balance.is_paid
-                ? "venta-status-pill status-paid"
-                : "venta-status-pill status-pending"
+                ? "compra-status-tag is-paid"
+                : "compra-status-tag is-pending"
             }
           >
-            {balance.is_paid ? "Pagado" : "Pendiente de pago"}
+            {balance.is_paid ? "Pagado" : "Pendiente"}
           </span>
         </p>
         {purchase.notes ? (

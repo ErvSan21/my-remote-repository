@@ -358,7 +358,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                         </p>
                         {balance.has_price ? (
                           <p className="compra-amount">
-                            Debe {formatBs(balance.pending_amount)}
+                            {formatBs(balance.pending_amount)}
                           </p>
                         ) : (
                           <p className="compra-define-price">Definir precio</p>
@@ -368,11 +368,11 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                         <span
                           className={
                             balance.is_paid
-                              ? "venta-status-pill status-paid"
-                              : "venta-status-pill status-pending"
+                              ? "compra-status-tag is-paid"
+                              : "compra-status-tag is-pending"
                           }
                         >
-                          {balance.is_paid ? "Pagado" : "Pendiente de pago"}
+                          {balance.is_paid ? "Pagado" : "Pendiente"}
                         </span>
                       </div>
                     </div>

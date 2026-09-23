@@ -1610,11 +1610,31 @@ a.data-card:focus-visible {
   background: transparent;
 }
 
-.compra-card-right .venta-status-pill {
-  max-width: 7.4rem;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.2;
+.compra-status-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  padding: 0.16rem 0.42rem;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+}
+
+.compra-status-tag.is-pending {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #b91c1c;
+}
+
+.compra-status-tag.is-paid {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #047857;
 }
 
 .pay-mode {
