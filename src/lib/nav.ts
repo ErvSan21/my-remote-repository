@@ -33,7 +33,7 @@ export const APP_NAV: NavItem[] = [
   {
     href: "/proveedores",
     label: "Proveedores",
-    shortLabel: "Proveed.",
+    shortLabel: "Proveedores",
     icon: "suppliers",
     roles: ["admin", "superadmin"],
   },

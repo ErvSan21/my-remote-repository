@@ -26,22 +26,53 @@ export function SkeletonLines({ count = 3 }: { count?: number }) {
 
 export function PageListSkeleton({ cards = 4 }: { cards?: number }) {
   return (
-    <div className="data-stack">
-      <div className="data-header providers-header">
-        <Skeleton className="skeleton-page-title" />
-        <Skeleton className="skeleton-plus" />
+    <div className="data-stack module-page" aria-busy="true" aria-label="Cargando">
+      <header className="module-hero">
+        <div className="module-hero-top">
+          <Skeleton className="skeleton-page-title skeleton-on-navy" />
+        </div>
+        <div className="module-hero-actions">
+          <Skeleton className="skeleton-cta skeleton-on-navy" />
+          <Skeleton className="skeleton-icon-btn skeleton-on-navy" />
+        </div>
+      </header>
+      <div className="sheet-filters">
+        <Skeleton className="skeleton-search" />
       </div>
-      <Skeleton className="skeleton-search" />
       <SkeletonLines count={cards} />
+    </div>
+  );
+}
+
+export function DetailSkeleton() {
+  return (
+    <div className="data-stack" aria-busy="true" aria-label="Cargando">
+      <header className="venta-detail-header">
+        <div className="venta-detail-title-row">
+          <Skeleton className="skeleton-icon-btn" />
+          <Skeleton className="skeleton-page-title" />
+          <Skeleton className="skeleton-icon-btn" />
+        </div>
+        <Skeleton className="skeleton-line short" />
+      </header>
+      <div className="data-form skeleton-card">
+        <Skeleton className="skeleton-title" />
+        <Skeleton className="skeleton-line" />
+        <Skeleton className="skeleton-line short" />
+      </div>
     </div>
   );
 }
 
 export function DashboardSkeleton() {
   return (
-    <div className="data-stack" aria-busy="true" aria-label="Cargando">
-      <Skeleton className="skeleton-page-title" style={{ width: "40%" }} />
-      <Skeleton className="skeleton-line" style={{ width: "60%" }} />
+    <div className="dash-page" aria-busy="true" aria-label="Cargando">
+      <header className="module-hero module-hero-dash">
+        <Skeleton
+          className="skeleton-page-title skeleton-on-navy"
+          style={{ width: "11rem" }}
+        />
+      </header>
       <section className="metrics-grid">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="metric">

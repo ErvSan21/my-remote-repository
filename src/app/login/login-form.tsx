@@ -201,7 +201,11 @@ export function LoginForm({
       <button type="submit" className="btn-primary login-submit" disabled={!canSubmit}>
         {pending ? "Entrando…" : "Ingresar"}
       </button>
-      {message ? <p className="login-hint">{message}</p> : null}
+      {message ? (
+        <p className="login-hint login-hint-error" role="alert">
+          {message}
+        </p>
+      ) : null}
     </form>
   );
 }

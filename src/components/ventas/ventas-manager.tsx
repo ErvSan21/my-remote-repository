@@ -145,10 +145,20 @@ export function VentasManager({
         addStyle="button"
         showAdd={canCreate && !showForm}
         onAdd={openCreate}
+        searchOpen={showSearch}
         onSearchToggle={
           showForm
             ? undefined
-            : () => setShowSearch((v) => !v)
+            : () =>
+                setShowSearch((open) => {
+                  const next = !open;
+                  if (next) {
+                    requestAnimationFrame(() => {
+                      document.getElementById("ve-search")?.focus();
+                    });
+                  }
+                  return next;
+                })
         }
       />
 
@@ -275,14 +285,18 @@ export function VentasManager({
               {pending ? "Guardando…" : "Guardar"}
             </button>
           </div>
-          {feedback ? <p className="login-hint">{feedback}</p> : null}
+          {feedback ? (
+            <p className="form-feedback" role="alert">
+              {feedback}
+            </p>
+          ) : null}
         </form>
       ) : null}
 
       {!showForm ? (
         <>
           {(showSearch || query || dateFrom || dateTo) && (
-            <div className="list-filters sheet-filters">
+            <div className="list-filters sheet-filters" id="list-filters">
               <div className="search-bar">
                 <label htmlFor="ve-search" className="sr-only">
                   Buscar
@@ -315,6 +329,11 @@ export function VentasManager({
                   />
                 </div>
               </div>
+              {dateFrom && dateTo && dateFrom > dateTo ? (
+                <p className="form-feedback" role="alert">
+                  La fecha «Desde» es posterior a «Hasta».
+                </p>
+              ) : null}
               {dateFrom || dateTo ? (
                 <button
                   type="button"
@@ -391,9 +410,17 @@ export function VentasManager({
             })}
             {visible.length === 0 ? (
               <li className="data-empty">
-                {ventas.length === 0
-                  ? "No hay ventas todavía."
-                  : "Ninguna venta coincide con la búsqueda."}
+                {ventas.length === 0 ? (
+                  <>
+                    <p className="data-empty-title">No hay ventas</p>
+                    <p>Usa «Registrar Venta» para anotar la primera.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="data-empty-title">Sin resultados</p>
+                    <p>Prueba con otro cliente, código o rango de fechas.</p>
+                  </>
+                )}
               </li>
             ) : null}
           </ul>

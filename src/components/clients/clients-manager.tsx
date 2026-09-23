@@ -19,21 +19,40 @@ const emptyClient = {
   notes: "",
 };
 
+function normalize(value: string | null | undefined) {
+  return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+}
+
 export function ClientsManager({ clients, listError }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyClient);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackOk, setFeedbackOk] = useState(false);
+  const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
 
   const activeClients = useMemo(
     () => clients.filter((c) => c.active),
     [clients],
   );
+  const visible = useMemo(() => {
+    const q = normalize(query.trim());
+    if (!q) return activeClients;
+    return activeClients.filter((c) =>
+      normalize(`${c.name} ${c.zone ?? ""} ${c.phone ?? ""}`).includes(q),
+    );
+  }, [activeClients, query]);
   const editing = Boolean(form.id);
 
-  function resetForm() {
+  function closeForm() {
     setForm(emptyClient);
     setShowForm(false);
+  }
+
+  function resetForm() {
+    closeForm();
+    setFeedback(null);
+    setFeedbackOk(false);
   }
 
   function onSubmit(e: FormEvent) {
@@ -47,7 +66,8 @@ export function ClientsManager({ clients, listError }: Props) {
         notes: form.notes,
       });
       setFeedback(result.message);
-      if (result.ok) resetForm();
+      setFeedbackOk(result.ok);
+      if (result.ok) closeForm();
     });
   }
 
@@ -123,26 +143,60 @@ export function ClientsManager({ clients, listError }: Props) {
               disabled={pending}
             />
           </div>
-          <div className="form-actions">
-            <button type="submit" className="btn-primary" disabled={pending}>
-              {editing ? "Guardar cambios" : "Crear cliente"}
-            </button>
+          <div className="form-actions form-actions-split">
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-form"
               onClick={resetForm}
+              disabled={pending}
             >
               Cancelar
             </button>
+            <button
+              type="submit"
+              className="btn-primary btn-form"
+              disabled={pending || !form.name.trim()}
+            >
+              {pending ? "Guardando…" : "Guardar"}
+            </button>
           </div>
-          {feedback ? <p className="login-hint">{feedback}</p> : null}
+          {feedback ? (
+            <p
+              className={`form-feedback${feedbackOk ? " is-ok" : ""}`}
+              role={feedbackOk ? "status" : "alert"}
+            >
+              {feedback}
+            </p>
+          ) : null}
         </form>
       ) : null}
 
-      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
+      {!showForm && feedback ? (
+        <p
+          className={`form-feedback${feedbackOk ? " is-ok" : ""}`}
+          role={feedbackOk ? "status" : "alert"}
+        >
+          {feedback}
+        </p>
+      ) : null}
+
+      {!showForm ? (
+        <div className="search-bar">
+          <label htmlFor="cl-search" className="sr-only">
+            Buscar cliente
+          </label>
+          <input
+            id="cl-search"
+            type="search"
+            placeholder="Buscar por nombre, zona o celular…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      ) : null}
 
       <ul className="data-list">
-        {activeClients.map((c) => (
+        {visible.map((c) => (
           <li key={c.id}>
             <button
               type="button"
@@ -157,6 +211,7 @@ export function ClientsManager({ clients, listError }: Props) {
                 });
                 setShowForm(true);
                 setFeedback(null);
+                setFeedbackOk(false);
               }}
             >
               <div className="data-card-top">
@@ -171,8 +226,20 @@ export function ClientsManager({ clients, listError }: Props) {
             </button>
           </li>
         ))}
-        {activeClients.length === 0 ? (
-          <li className="data-empty">No hay clientes.</li>
+        {visible.length === 0 ? (
+          <li className="data-empty">
+            {activeClients.length === 0 ? (
+              <>
+                <p className="data-empty-title">No hay clientes</p>
+                <p>Usa «Crear cliente» para agregar el primero.</p>
+              </>
+            ) : (
+              <>
+                <p className="data-empty-title">Sin resultados</p>
+                <p>Prueba con otro nombre, zona o celular.</p>
+              </>
+            )}
+          </li>
         ) : null}
       </ul>
     </div>

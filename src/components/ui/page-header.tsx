@@ -23,11 +23,13 @@ export function PageHeader({
   showAdd = true,
   trailing,
   onSearchToggle,
+  searchOpen = false,
   addStyle = "plus",
   variant = "default",
 }: PageHeaderProps) {
   const showButton = showAdd && onAdd && addStyle === "button";
   const showPlus = showAdd && onAdd && addStyle === "plus";
+  const showActions = showButton || showPlus || Boolean(onSearchToggle);
 
   if (variant === "hero") {
     return (
@@ -37,6 +39,7 @@ export function PageHeader({
           {trailing}
         </div>
         {subtitle ? <p className="module-hero-sub">{subtitle}</p> : null}
+        {showActions ? (
         <div className="module-hero-actions">
           {showButton ? (
             <button
@@ -61,8 +64,10 @@ export function PageHeader({
           {onSearchToggle ? (
             <button
               type="button"
-              className="module-hero-search"
-              aria-label="Buscar"
+              className={`module-hero-search${searchOpen ? " is-active" : ""}`}
+              aria-label={searchOpen ? "Ocultar búsqueda" : "Buscar"}
+              aria-expanded={searchOpen}
+              aria-controls="list-filters"
               onClick={onSearchToggle}
             >
               <svg
@@ -80,6 +85,7 @@ export function PageHeader({
             </button>
           ) : null}
         </div>
+        ) : null}
       </header>
     );
   }

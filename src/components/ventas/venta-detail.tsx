@@ -144,7 +144,10 @@ export function VentaDetail({ venta, canEdit }: Props) {
             </li>
           ))}
           {paymentsChrono.length === 0 ? (
-            <li className="data-empty">Sin pagos registrados.</li>
+            <li className="data-empty">
+              <p className="data-empty-title">Sin pagos</p>
+              <p>Cuando registres un cobro, aparecerá aquí.</p>
+            </li>
           ) : null}
         </ul>
       </section>
@@ -201,7 +204,11 @@ export function VentaDetail({ venta, canEdit }: Props) {
                 {pending ? "Guardando…" : "Guardar"}
               </button>
             </div>
-            {feedback ? <p className="login-hint">{feedback}</p> : null}
+            {feedback ? (
+              <p className="form-feedback" role="alert">
+                {feedback}
+              </p>
+            ) : null}
           </form>
         ) : (
           <button
