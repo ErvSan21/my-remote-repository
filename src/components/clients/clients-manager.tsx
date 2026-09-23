@@ -52,10 +52,10 @@ export function ClientsManager({ clients, listError }: Props) {
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
+        variant="hero"
         title="Clientes"
-        subtitle="Directorio de clientes para ventas y cobros."
         addLabel="Crear cliente"
         addStyle="button"
         showAdd={!showForm}

@@ -41,6 +41,32 @@ export function formatDateTimeLaPaz(isoDate: string | null | undefined): string 
   });
 }
 
+/** Relativo corto: "Hoy 10:30" / "Ayer 18:05" / fecha. */
+export function formatWhenLaPaz(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return isoDate;
+
+  const time = d.toLocaleTimeString("es-BO", {
+    timeZone: "America/La_Paz",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const dayKey = d.toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
+  const todayKey = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/La_Paz",
+  });
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayKey = yesterday.toLocaleDateString("en-CA", {
+    timeZone: "America/La_Paz",
+  });
+
+  if (dayKey === todayKey) return `Hoy ${time}`;
+  if (dayKey === yesterdayKey) return `Ayer ${time}`;
+  return `${formatDateLaPaz(isoDate)} ${time}`;
+}
+
 export function formatVentaTitle(saleNumber: number | null | undefined): string {
   if (saleNumber == null || !Number.isFinite(Number(saleNumber))) {
     return "Venta";

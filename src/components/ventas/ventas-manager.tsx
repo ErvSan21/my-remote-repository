@@ -7,8 +7,8 @@ import { createConsignmentAction } from "@/app/actions/consignments";
 import type { Client, VentaRow } from "@/lib/data-types";
 import {
   formatBs,
-  formatDateLaPaz,
   formatVentaTitle,
+  formatWhenLaPaz,
 } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
@@ -56,6 +56,7 @@ export function VentasManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -136,14 +137,19 @@ export function VentasManager({
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
+        variant="hero"
         title="Ventas"
-        subtitle="Historial de ventas, estado de pago y montos pendientes."
-        addLabel="Registrar venta"
+        addLabel="Registrar Venta"
         addStyle="button"
         showAdd={canCreate && !showForm}
         onAdd={openCreate}
+        onSearchToggle={
+          showForm
+            ? undefined
+            : () => setShowSearch((v) => !v)
+        }
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
@@ -275,57 +281,58 @@ export function VentasManager({
 
       {!showForm ? (
         <>
-          <div className="list-filters">
-            <div className="search-bar">
-              <label htmlFor="ve-search" className="sr-only">
-                Buscar
-              </label>
-              <input
-                id="ve-search"
-                type="search"
-                placeholder="Buscar por cliente o código…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <div className="list-date-filters">
-              <div className="field">
-                <label htmlFor="ve-desde">Desde</label>
+          {(showSearch || query || dateFrom || dateTo) && (
+            <div className="list-filters sheet-filters">
+              <div className="search-bar">
+                <label htmlFor="ve-search" className="sr-only">
+                  Buscar
+                </label>
                 <input
-                  id="ve-desde"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  id="ve-search"
+                  type="search"
+                  placeholder="Buscar por cliente o código…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="ve-hasta">Hasta</label>
-                <input
-                  id="ve-hasta"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
+              <div className="list-date-filters">
+                <div className="field">
+                  <label htmlFor="ve-desde">Desde</label>
+                  <input
+                    id="ve-desde"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="ve-hasta">Hasta</label>
+                  <input
+                    id="ve-hasta"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                  />
+                </div>
               </div>
+              {dateFrom || dateTo ? (
+                <button
+                  type="button"
+                  className="btn-secondary list-clear-dates"
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                >
+                  Limpiar fechas
+                </button>
+              ) : null}
             </div>
-            {dateFrom || dateTo ? (
-              <button
-                type="button"
-                className="btn-secondary list-clear-dates"
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-              >
-                Limpiar fechas
-              </button>
-            ) : null}
-          </div>
+          )}
 
           <ul className="data-list">
             {visible.map((v) => {
               const name = v.clients?.name ?? "Cliente";
-              const isCredit = !v.is_paid || v.payments.length > 1;
               const statusKey = v.is_paid
                 ? "paid"
                 : v.paid_amount > 0.001
@@ -335,7 +342,7 @@ export function VentasManager({
                 statusKey === "paid"
                   ? "Pagado"
                   : statusKey === "partial"
-                    ? "Pago parcial"
+                    ? "Parcial"
                     : "Pendiente";
               return (
                 <li key={v.id}>
@@ -343,43 +350,40 @@ export function VentasManager({
                     href={`/ventas/${v.id}`}
                     className="data-card venta-card"
                   >
-                    <div className="venta-card-main">
-                      <div className="venta-card-body">
-                        <div className="venta-card-title-line">
-                          <p className="data-card-title venta-card-client">
-                            {name}
-                          </p>
-                          <span
-                            className={`venta-type-badge${isCredit ? " is-credit" : " is-cash"}`}
-                          >
-                            {isCredit ? "Crédito" : "Contado"}
-                          </span>
-                        </div>
-                        <p className="data-card-meta">
-                          {formatVentaTitle(v.sale_number)}
-                          {" · "}
-                          {formatDateLaPaz(v.created_at)}
-                        </p>
-                        <span
-                          className={`venta-status-pill status-${statusKey}`}
+                    <div className="venta-card-row">
+                      <span className="venta-avatar" aria-hidden>
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
                         >
-                          <span className="venta-status-dot" aria-hidden />
-                          {statusLabel}
-                        </span>
+                          <path d="M20 21a8 8 0 0 0-16 0" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                      </span>
+                      <div className="venta-card-body">
+                        <p className="data-card-title venta-card-client">
+                          {name}
+                        </p>
+                        <p className="data-card-meta">
+                          {formatWhenLaPaz(v.created_at)}
+                          {" · "}
+                          {formatVentaTitle(v.sale_number)}
+                        </p>
                       </div>
                       <div className="venta-card-right">
                         <p className="venta-amount-plain">
                           {formatBs(v.total_amount)}
                         </p>
-                        {!v.is_paid ? (
-                          <p className="venta-debe">
-                            Debe {formatBs(v.pending_amount)}
-                          </p>
-                        ) : null}
+                        <span
+                          className={`venta-status-pill status-${statusKey}`}
+                        >
+                          {statusLabel}
+                        </span>
                       </div>
-                      <span className="venta-card-chevron" aria-hidden>
-                        ›
-                      </span>
                     </div>
                   </Link>
                 </li>

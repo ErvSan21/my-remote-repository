@@ -61,10 +61,10 @@ export function SuppliersManager({
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
+        variant="hero"
         title="Proveedores"
-        subtitle="Proveedores activos y deuda pendiente."
         addLabel="Crear proveedor"
         addStyle="button"
         showAdd={!showForm}

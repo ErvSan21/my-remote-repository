@@ -18,80 +18,89 @@ function dayBoundsLaPaz() {
   };
 }
 
-function weekStartLaPaz() {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }),
-  );
-  const day = now.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  return monday.toLocaleDateString("en-CA");
-}
-
 export default async function DashboardPage() {
   await requireAdmin();
   const supabase = await createClient();
-  const { start, end } = dayBoundsLaPaz();
-  const weekFrom = weekStartLaPaz();
+  const { start, end, today } = dayBoundsLaPaz();
 
-  const [debts, todayPays, weekPays, openVentas] = await Promise.all([
-    getSupplierDebtsAction(),
-    supabase
-      .from("client_payments")
-      .select("amount")
-      .gte("paid_at", start)
-      .lte("paid_at", end),
-    supabase
-      .from("client_payments")
-      .select("amount")
-      .gte("paid_at", `${weekFrom}T00:00:00-04:00`),
-    supabase
-      .from("consignments")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["open", "partial"]),
-  ]);
+  const [debts, ventasHoyRes, comprasHoyRes, consignmentsRes, paymentsRes] =
+    await Promise.all([
+      getSupplierDebtsAction(),
+      supabase
+        .from("consignments")
+        .select("total_amount")
+        .gte("created_at", start)
+        .lte("created_at", end),
+      supabase
+        .from("purchases")
+        .select("total_amount, purchase_date, created_at")
+        .gte("purchase_date", today)
+        .lte("purchase_date", today),
+      supabase
+        .from("consignments")
+        .select("id, total_amount, status")
+        .in("status", ["open", "partial"]),
+      supabase
+        .from("client_payments")
+        .select("consignment_id, amount")
+        .not("consignment_id", "is", null),
+    ]);
 
-  const cobradoHoy = (todayPays.data ?? []).reduce(
-    (s, r) => s + Number(r.amount),
+  const ventasHoy = (ventasHoyRes.data ?? []).reduce(
+    (s, r) => s + Number(r.total_amount ?? 0),
     0,
   );
-  const cobradoSemana = (weekPays.data ?? []).reduce(
-    (s, r) => s + Number(r.amount),
+  const comprasHoy = (comprasHoyRes.data ?? []).reduce(
+    (s, r) => s + Number(r.total_amount ?? 0),
     0,
   );
+
+  const paidByCons = new Map<string, number>();
+  for (const p of paymentsRes.data ?? []) {
+    const id = p.consignment_id as string;
+    paidByCons.set(id, (paidByCons.get(id) ?? 0) + Number(p.amount));
+  }
+  const porCobrar = (consignmentsRes.data ?? []).reduce((s, c) => {
+    const total = Number(c.total_amount ?? 0);
+    const paid = paidByCons.get(c.id as string) ?? 0;
+    return s + Math.max(0, total - paid);
+  }, 0);
+
+  const porPagar = debts.error ? null : debts.totalOwed;
   const pendingPrice = debts.purchases.filter(
     (p) => p.status === "pending_price",
   ).length;
-  const ventasPendientes = openVentas.count ?? 0;
 
   return (
-    <>
-      <section className="hero-dash">
-        <h1>Gestión Avícola</h1>
-        <p>MAC — ventas, compras, clientes y proveedores.</p>
-      </section>
+    <div className="dash-page">
+      <header className="module-hero module-hero-dash">
+        <h1 className="module-hero-title">Dashboard MAC</h1>
+      </header>
 
       <section className="metrics-grid" aria-label="Métricas">
         <MetricCard
-          label="Deuda proveedores"
-          value={debts.error ? "—" : formatBs(debts.totalOwed)}
-          hint="Total a todos"
+          label="Ventas Hoy"
+          value={formatBs(ventasHoy)}
+          hint="Registradas hoy"
+          tone="orange"
         />
         <MetricCard
-          label="Ventas abiertas"
-          value={String(ventasPendientes)}
-          hint="Pendientes o parciales"
+          label="Compras Hoy"
+          value={formatBs(comprasHoy)}
+          hint="Registradas hoy"
+          tone="orange"
         />
         <MetricCard
-          label="Cobrado hoy"
-          value={formatBs(cobradoHoy)}
-          hint="Clientes · QR + efectivo"
+          label="Cuentas por Cobrar"
+          value={formatBs(porCobrar)}
+          hint="Ventas abiertas"
+          tone="blue"
         />
         <MetricCard
-          label="Cobrado semana"
-          value={formatBs(cobradoSemana)}
-          hint={`Desde ${weekFrom}`}
+          label="Cuentas por Pagar"
+          value={porPagar == null ? "—" : formatBs(porPagar)}
+          hint="Deuda proveedores"
+          tone="blue"
         />
       </section>
 
@@ -117,6 +126,6 @@ export default async function DashboardPage() {
           <Link href="/compras">Ver compras</Link>
         </p>
       ) : null}
-    </>
+    </div>
   );
 }

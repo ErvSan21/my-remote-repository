@@ -7,7 +7,7 @@ import type { Purchase, Supplier } from "@/lib/data-types";
 import {
   PURCHASE_STATUS_LABEL,
   formatBs,
-  formatDateLaPaz,
+  formatWhenLaPaz,
 } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -56,6 +56,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(true);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
@@ -117,11 +118,11 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
+        variant="hero"
         title="Compras"
-        subtitle="Historial de compras a proveedores y estado de pago."
-        addLabel="Registrar compra"
+        addLabel="Registrar Compra"
         addStyle="button"
         showAdd={!showForm}
         onAdd={() => {
@@ -133,6 +134,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
           setShowForm(true);
           setFeedback(null);
         }}
+        onSearchToggle={
+          showForm ? undefined : () => setShowSearch((v) => !v)
+        }
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
@@ -239,84 +243,103 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
       {!showForm ? (
         <>
-          <div className="list-filters">
-            <div className="search-bar">
-              <label htmlFor="pur-search" className="sr-only">
-                Buscar
-              </label>
-              <input
-                id="pur-search"
-                type="search"
-                placeholder="Buscar por proveedor o celular…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <div className="list-date-filters">
-              <div className="field">
-                <label htmlFor="pur-desde">Desde</label>
+          {(showSearch || query || dateFrom || dateTo) && (
+            <div className="list-filters sheet-filters">
+              <div className="search-bar">
+                <label htmlFor="pur-search" className="sr-only">
+                  Buscar
+                </label>
                 <input
-                  id="pur-desde"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  id="pur-search"
+                  type="search"
+                  placeholder="Buscar por proveedor o celular…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="pur-hasta">Hasta</label>
-                <input
-                  id="pur-hasta"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
+              <div className="list-date-filters">
+                <div className="field">
+                  <label htmlFor="pur-desde">Desde</label>
+                  <input
+                    id="pur-desde"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="pur-hasta">Hasta</label>
+                  <input
+                    id="pur-hasta"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                  />
+                </div>
               </div>
+              {dateFrom || dateTo ? (
+                <button
+                  type="button"
+                  className="btn-secondary list-clear-dates"
+                  onClick={() => {
+                    setDateFrom("");
+                    setDateTo("");
+                  }}
+                >
+                  Limpiar fechas
+                </button>
+              ) : null}
             </div>
-            {dateFrom || dateTo ? (
-              <button
-                type="button"
-                className="btn-secondary list-clear-dates"
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-              >
-                Limpiar fechas
-              </button>
-            ) : null}
-          </div>
+          )}
 
           <ul className="data-list">
-            {visible.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/compras/${p.id}`}
-                  className="data-card"
-                >
-                  <div className="data-card-top">
-                    <div>
-                      <p className="data-card-title">
-                        {p.suppliers?.name ?? "Proveedor"}
-                      </p>
-                      <p className="data-card-meta">
-                        {formatDateLaPaz(p.created_at || p.purchase_date)} ·{" "}
-                        {p.quantity_birds}
-                        {p.suppliers?.phone ? ` · ${p.suppliers.phone}` : ""}
-                      </p>
+            {visible.map((p) => {
+              const isPaid = p.status === "paid";
+              return (
+                <li key={p.id}>
+                  <Link href={`/compras/${p.id}`} className="data-card compra-card">
+                    <div className="compra-card-row">
+                      <span className="compra-icon" aria-hidden>
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                        >
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <path d="M3.3 7 12 12l8.7-5" />
+                          <path d="M12 22V12" />
+                        </svg>
+                      </span>
+                      <div className="compra-card-body">
+                        <p className="data-card-title">
+                          {p.suppliers?.name ?? "Proveedor"}
+                        </p>
+                        <p className="compra-amount">{formatBs(p.total_amount)}</p>
+                      </div>
+                      <div className="compra-card-right">
+                        {isPaid ? (
+                          <span className="venta-status-pill status-paid">
+                            Pagado
+                          </span>
+                        ) : (
+                          <span className="compra-when">
+                            {formatWhenLaPaz(p.created_at || p.purchase_date)}
+                          </span>
+                        )}
+                        {!isPaid ? (
+                          <span className={`status-pill status-${p.status}`}>
+                            {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <span className={`status-pill status-${p.status}`}>
-                      {PURCHASE_STATUS_LABEL[p.status] ?? p.status}
-                    </span>
-                  </div>
-                  <p className="data-card-meta">
-                    Precio:{" "}
-                    {p.unit_price == null ? "pendiente" : formatBs(p.unit_price)}
-                    {" · "}
-                    Total: {formatBs(p.total_amount)}
-                  </p>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
             {visible.length === 0 ? (
               <li className="data-empty">
                 {purchases.length === 0

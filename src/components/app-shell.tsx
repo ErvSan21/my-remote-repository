@@ -23,7 +23,7 @@ export function AppShell({ role, displayName, children }: AppShellProps) {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header app-header-slim">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden />
           <div>

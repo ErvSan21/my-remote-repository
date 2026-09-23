@@ -18,7 +18,6 @@ type LoginFormProps = {
   nextPath?: string;
   setupMissing?: boolean;
   accountDisabled?: boolean;
-  /** Runtime public config from the server (avoids stale client bundle env). */
   supabaseUrl?: string;
   supabaseKey?: string;
   envStatus?: EnvStatus;
@@ -125,6 +124,8 @@ export function LoginForm({
 
   return (
     <form className="login-card" onSubmit={onSubmit}>
+      <h1 className="login-card-title">MAC - Gestión Avícola</h1>
+
       {setupMissing && envStatus ? (
         <div className="env-status" role="status">
           <p className="env-status-title">Diagnóstico (sin secretos)</p>
@@ -153,43 +154,54 @@ export function LoginForm({
       ) : null}
 
       <div className="field">
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="username"
-          inputMode="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="tu@correo.com"
-          required
-          disabled={setupMissing || pending}
-        />
+        <label htmlFor="email">Usuario</label>
+        <div className="login-input-wrap">
+          <span className="login-input-icon" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M20 21a8 8 0 0 0-16 0" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="username"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Usuario"
+            required
+            disabled={setupMissing || pending}
+          />
+        </div>
       </div>
       <div className="field">
         <label htmlFor="password">Contraseña</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={setupMissing || pending}
-        />
+        <div className="login-input-wrap">
+          <span className="login-input-icon" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="4" y="11" width="16" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+          </span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Contraseña"
+            required
+            disabled={setupMissing || pending}
+          />
+        </div>
       </div>
-      <button type="submit" className="btn-primary" disabled={!canSubmit}>
-        {pending ? "Entrando…" : "Entrar"}
+      <button type="submit" className="btn-primary login-submit" disabled={!canSubmit}>
+        {pending ? "Entrando…" : "Ingresar"}
       </button>
       {message ? <p className="login-hint">{message}</p> : null}
-      <p className="login-hint">
-        Usa el email/password de Supabase Auth.{" "}
-        <code>SERVICE_ROLE</code> no se necesita para entrar. Si ves{" "}
-        <code>?setup=1</code> en la URL y ya tienes .env, pulsa reintentar o
-        abre <code>/login</code> limpio tras reiniciar el servidor.
-      </p>
     </form>
   );
 }
