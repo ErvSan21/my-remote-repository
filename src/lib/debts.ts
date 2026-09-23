@@ -1,4 +1,4 @@
-import type { PurchaseStatus } from "@/lib/types";
+import type { ConsignmentStatus, PurchaseStatus } from "@/lib/types";
 
 export type PurchaseDebtRow = {
   id: string;
@@ -61,4 +61,48 @@ export function statusAfterPayment(
   if (paidAmount <= 0) return "priced";
   if (paidAmount + 0.001 >= totalAmount) return "paid";
   return "partially_paid";
+}
+
+/** Saldo de una venta a partir de total y cobros. El status guardado no pisa el cálculo. */
+export function ventaBalance(total: number | null, paid: number) {
+  const paidAmount = Number.isFinite(paid) ? paid : 0;
+  if (total == null || !Number.isFinite(Number(total))) {
+    return { paid_amount: paidAmount, pending_amount: 0, is_paid: false };
+  }
+  const totalN = Number(total);
+  const pendingRaw = Math.max(
+    0,
+    Math.round((totalN - paidAmount) * 100) / 100,
+  );
+  const is_paid = totalN > 0 && pendingRaw <= 0.001;
+  return {
+    paid_amount: paidAmount,
+    pending_amount: is_paid ? 0 : pendingRaw,
+    is_paid,
+  };
+}
+
+export function consignmentStatusForBalance(
+  total: number | null,
+  paid: number,
+): ConsignmentStatus {
+  if (total == null || !Number.isFinite(Number(total))) {
+    return paid > 0 ? "partial" : "open";
+  }
+  const { is_paid } = ventaBalance(total, paid);
+  if (is_paid) return "closed";
+  if (paid > 0) return "partial";
+  return "open";
+}
+
+/** true si `amount` deja el saldo por debajo de cero (total desconocido = sin tope). */
+export function paymentExceedsBalance(
+  total: number | null,
+  alreadyPaid: number,
+  amount: number,
+): boolean {
+  if (total == null || !Number.isFinite(Number(total))) return false;
+  const room =
+    Math.round((Number(total) - Number(alreadyPaid)) * 100) / 100;
+  return Number(amount) > room + 0.001;
 }

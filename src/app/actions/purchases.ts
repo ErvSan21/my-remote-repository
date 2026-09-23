@@ -73,7 +73,10 @@ export async function createPurchaseAction(input: {
     return { ok: false, message: "Elige un proveedor." };
   }
   if (qty == null) {
-    return { ok: false, message: "La cantidad de aves debe ser mayor a 0." };
+    return {
+      ok: false,
+      message: "La cantidad de aves debe ser un entero mayor a 0.",
+    };
   }
   if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (input.purchase_date && !isIsoDate(input.purchase_date)) {
@@ -112,10 +115,22 @@ export async function createPurchaseAction(input: {
     `Compra ${input.purchase_date}`,
   );
   if (!stock.ok) {
-    return {
-      ok: false,
-      message: `Compra creada pero falló el inventario: ${stock.message}`,
-    };
+    await supabase
+      .from("inventory_movements")
+      .delete()
+      .eq("ref_purchase_id", purchase.id);
+    await supabase
+      .from("inventory_lots")
+      .delete()
+      .eq("source_purchase_id", purchase.id);
+    const { error: delError } = await supabase
+      .from("purchases")
+      .delete()
+      .eq("id", purchase.id);
+    const extra = delError
+      ? ` Además no se pudo deshacer la compra: ${delError.message}`
+      : "";
+    return { ok: false, message: `${stock.message}${extra}` };
   }
 
   revalidatePath("/compras");
@@ -140,13 +155,16 @@ export async function updatePurchaseAction(input: {
   unit_price: number | null;
   notes: string;
 }): Promise<ActionResult> {
-  await requireSuperadmin();
+  const auth = await requireSuperadmin();
   const qty = parsePositiveInt(input.quantity_birds);
   const notes = boundedText(input.notes);
   if (!isUuid(input.id)) return { ok: false, message: "Compra inválida." };
   if (!isUuid(input.supplier_id)) return { ok: false, message: "Elige un proveedor." };
   if (qty == null) {
-    return { ok: false, message: "La cantidad debe ser mayor a 0." };
+    return {
+      ok: false,
+      message: "La cantidad debe ser un entero mayor a 0.",
+    };
   }
   if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (!isIsoDate(input.purchase_date)) {
@@ -158,6 +176,28 @@ export async function updatePurchaseAction(input: {
 
   const amounts = resolveAmounts(qty, input.unit_price == null ? null : parseMoney(input.unit_price));
   const supabase = await createClient();
+  const { data: current, error: currentError } = await supabase
+    .from("purchases")
+    .select("quantity_birds")
+    .eq("id", input.id)
+    .maybeSingle();
+  if (currentError || !current) {
+    return { ok: false, message: "Compra no encontrada." };
+  }
+  const previousQty = Number(current.quantity_birds);
+
+  let stockAdjusted = false;
+  if (qty !== previousQty) {
+    const { adjustStockForPurchaseQtyChange } = await import("@/lib/inventory");
+    const stock = await adjustStockForPurchaseQtyChange(
+      input.id,
+      previousQty,
+      qty,
+      auth.user.id,
+    );
+    if (!stock.ok) return { ok: false, message: stock.message };
+    stockAdjusted = true;
+  }
 
   // Recalcular estado según pagos ya hechos si hay precio
   let status = amounts.status;
@@ -191,12 +231,26 @@ export async function updatePurchaseAction(input: {
     })
     .eq("id", input.id);
 
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    if (stockAdjusted) {
+      const { adjustStockForPurchaseQtyChange } = await import(
+        "@/lib/inventory"
+      );
+      await adjustStockForPurchaseQtyChange(
+        input.id,
+        qty,
+        previousQty,
+        auth.user.id,
+      );
+    }
+    return { ok: false, message: error.message };
+  }
   revalidatePath("/compras");
   revalidatePath(`/compras/${input.id}`);
   revalidatePath(`/compras/${input.id}/editar`);
   revalidatePath("/pagos-proveedores");
   revalidatePath("/proveedores");
+  revalidatePath("/inventario");
   revalidatePath("/");
   return { ok: true, message: "Compra actualizada." };
 }

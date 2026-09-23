@@ -5,8 +5,9 @@ import { requireAdmin, requireAuth } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { tryRpc } from "@/lib/status-refresh";
 import { boundedText, isUuid, parseMoney } from "@/lib/validation";
+import { consignmentStatusForBalance, paymentExceedsBalance } from "@/lib/debts";
 import type { ActionResult, ClientPayment } from "@/lib/data-types";
-import type { ConsignmentStatus, PaymentMethod } from "@/lib/types";
+import type { PaymentMethod } from "@/lib/types";
 
 function fallbackReceiptCode() {
   const d = new Date().toLocaleDateString("en-CA", {
@@ -24,14 +25,8 @@ async function nextReceiptCode(
   return fallbackReceiptCode();
 }
 
-function statusAfterClientPay(
-  total: number | null,
-  paid: number,
-): ConsignmentStatus {
-  if (total == null) return paid > 0 ? "partial" : "open";
-  if (paid + 0.001 >= total) return "closed";
-  if (paid > 0) return "partial";
-  return "open";
+function statusAfterClientPay(total: number | null, paid: number) {
+  return consignmentStatusForBalance(total, paid);
 }
 
 export async function listClientPaymentsAction(): Promise<{
@@ -91,6 +86,20 @@ export async function createClientPaymentAction(input: {
     if (cons.client_id !== input.client_id) {
       return { ok: false, message: "La consignación no es de ese cliente." };
     }
+    if (cons.total_amount != null) {
+      const { data: pays, error: paidError } = await supabase
+        .from("client_payments")
+        .select("amount")
+        .eq("consignment_id", input.consignment_id);
+      if (paidError) return { ok: false, message: paidError.message };
+      const paid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+      if (paymentExceedsBalance(Number(cons.total_amount), paid, amount)) {
+        return {
+          ok: false,
+          message: "El monto supera el saldo pendiente de la venta.",
+        };
+      }
+    }
   }
 
   const { data: payment, error: payError } = await supabase
@@ -124,9 +133,12 @@ export async function createClientPaymentAction(input: {
     .single();
 
   if (recError || !receipt) {
+    await supabase.from("client_payments").delete().eq("id", payment.id);
     return {
       ok: false,
-      message: recError?.message || "Cobro ok pero falló el recibo.",
+      message:
+        recError?.message ||
+        "No se pudo emitir el recibo. El cobro no quedó registrado.",
     };
   }
 
@@ -232,7 +244,7 @@ export async function updateClientPaymentAction(input: {
   if (input.consignment_id) {
     const { data: cons, error } = await supabase
       .from("consignments")
-      .select("id, client_id")
+      .select("id, client_id, total_amount")
       .eq("id", input.consignment_id)
       .maybeSingle();
     if (error || !cons) {
@@ -240,6 +252,22 @@ export async function updateClientPaymentAction(input: {
     }
     if (cons.client_id !== input.client_id) {
       return { ok: false, message: "La consignación no es de ese cliente." };
+    }
+    if (cons.total_amount != null) {
+      const { data: pays, error: paidError } = await supabase
+        .from("client_payments")
+        .select("id, amount")
+        .eq("consignment_id", input.consignment_id);
+      if (paidError) return { ok: false, message: paidError.message };
+      const paid = (pays ?? [])
+        .filter((p) => p.id !== input.id)
+        .reduce((s, p) => s + Number(p.amount), 0);
+      if (paymentExceedsBalance(Number(cons.total_amount), paid, amount)) {
+        return {
+          ok: false,
+          message: "El monto supera el saldo pendiente de la venta.",
+        };
+      }
     }
   }
 
