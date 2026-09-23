@@ -122,6 +122,48 @@ export async function adjustStockForPurchaseQtyChange(
   return { ok: true as const };
 }
 
+/** Quita el lote de una compra si las aves compradas siguen completas. */
+export async function removeStockForDeletedPurchase(
+  purchaseId: string,
+  purchaseQty: number,
+  userId: string,
+) {
+  if (!(await requireStockActor(userId))) {
+    return { ok: false as const, message: "No autorizado." };
+  }
+  const supabase = await createClient();
+  const { data: lots, error } = await supabase
+    .from("inventory_lots")
+    .select("id, quantity_birds")
+    .eq("source_purchase_id", purchaseId);
+
+  if (error) return { ok: false as const, message: error.message };
+  if (!lots?.length) return { ok: true as const };
+
+  const have = lots.reduce((sum, lot) => sum + Number(lot.quantity_birds), 0);
+  if (have !== purchaseQty) {
+    return {
+      ok: false as const,
+      message: `No se puede eliminar: quedan ${have} aves en stock y se compraron ${purchaseQty}.`,
+    };
+  }
+
+  const ids = lots.map((lot) => lot.id);
+  const { error: movError } = await supabase
+    .from("inventory_movements")
+    .delete()
+    .in("lot_id", ids);
+  if (movError) return { ok: false as const, message: movError.message };
+
+  const { error: lotError } = await supabase
+    .from("inventory_lots")
+    .delete()
+    .in("id", ids);
+  if (lotError) return { ok: false as const, message: lotError.message };
+
+  return { ok: true as const };
+}
+
 /** Sale stock por consignación (FIFO sobre lotes abiertos). */
 export async function removeStockForConsignment(
   consignmentId: string,

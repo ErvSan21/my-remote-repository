@@ -3,14 +3,11 @@
 import { FormEvent, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { deletePurchaseAction } from "@/app/actions/purchases";
 import { createSupplierPaymentAction } from "@/app/actions/supplier-payments";
-import type { Purchase } from "@/lib/data-types";
+import type { ProfileRef, Purchase } from "@/lib/data-types";
 import { purchaseBalance } from "@/lib/debts";
-import {
-  formatBs,
-  formatDateLaPaz,
-  formatDateTimeLaPaz,
-} from "@/lib/format";
+import { formatBs, formatDateLaPaz } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
@@ -22,13 +19,34 @@ type Props = {
 
 type PayMode = "partial" | "total";
 
+function personName(person?: ProfileRef | null) {
+  return person?.full_name?.trim() || person?.username?.trim() || "—";
+}
+
+function TrashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 .9h8a1 1 0 0 0 1-.9l1-13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CompraDetail({ purchase, canEdit }: Props) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const deleteRef = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<PayMode>("partial");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
@@ -58,6 +76,30 @@ export function CompraDetail({ purchase, canEdit }: Props) {
 
   function closePay() {
     dialogRef.current?.close();
+  }
+
+  function openDelete() {
+    setDeleteFeedback(null);
+    if (deleteRef.current && !deleteRef.current.open) {
+      deleteRef.current.showModal();
+    }
+  }
+
+  function closeDelete() {
+    deleteRef.current?.close();
+  }
+
+  function onDelete() {
+    setDeleteFeedback(null);
+    startTransition(async () => {
+      const result = await deletePurchaseAction(purchase.id);
+      if (!result.ok) {
+        setDeleteFeedback(result.message);
+        return;
+      }
+      deleteRef.current?.close();
+      router.push("/compras");
+    });
   }
 
   function onSubmit(e: FormEvent) {
@@ -105,39 +147,10 @@ export function CompraDetail({ purchase, canEdit }: Props) {
             </Link>
           ) : null}
         </div>
-        <p className="data-card-meta">
-          Registrada:{" "}
-          {formatDateTimeLaPaz(purchase.created_at) !== "—"
-            ? formatDateTimeLaPaz(purchase.created_at)
-            : formatDateLaPaz(purchase.purchase_date)}
-        </p>
       </header>
 
-      <section className="data-form">
-        <p className="data-card-meta">
-          Proveedor: {purchase.suppliers?.name ?? "—"}
-        </p>
-        <p className="data-card-meta">
-          Celular: {purchase.suppliers?.phone || "—"}
-        </p>
-        <p className="data-card-meta">
-          Fecha compra: {formatDateLaPaz(purchase.purchase_date)}
-        </p>
-        <p className="data-card-meta">Cantidad: {purchase.quantity_birds} pollos</p>
-        <p className="data-card-meta">
-          Precio unit.:{" "}
-          {purchase.unit_price == null
-            ? "pendiente"
-            : formatBs(purchase.unit_price)}
-        </p>
-        <p className="data-card-meta">
-          {balance.has_price ? (
-            <>{formatBs(balance.pending_amount)}</>
-          ) : (
-            <span className="compra-define-price">Definir precio</span>
-          )}
-        </p>
-        <p className="data-card-meta">
+      <section className="compra-info">
+        <div className="compra-info-top">
           <span
             className={
               balance.is_paid
@@ -147,16 +160,42 @@ export function CompraDetail({ purchase, canEdit }: Props) {
           >
             {balance.is_paid ? "Pagado" : "Pendiente"}
           </span>
-        </p>
+          <div className="compra-info-figures">
+            <span>{purchase.quantity_birds} pollos</span>
+            {purchase.unit_price == null ? (
+              <span className="compra-define-price">Definir precio</span>
+            ) : (
+              <span>{formatBs(purchase.unit_price)}</span>
+            )}
+          </div>
+        </div>
+        <p className="compra-info-date">{formatDateLaPaz(purchase.purchase_date)}</p>
+        <p className="compra-info-user">{personName(purchase.creator)}</p>
         {purchase.notes ? (
-          <p className="data-card-meta">Notas: {purchase.notes}</p>
+          <p className="data-card-meta compra-info-notes">Notas: {purchase.notes}</p>
         ) : null}
       </section>
 
-      {balance.has_price && !balance.is_paid ? (
-        <button type="button" className="btn-primary btn-form" onClick={openPay}>
-          Cancelar
-        </button>
+      {canEdit || (balance.has_price && !balance.is_paid) ? (
+        <div className="compra-action-row">
+          {canEdit ? (
+            <button
+              type="button"
+              className="compra-delete-btn"
+              onClick={openDelete}
+              disabled={pending}
+              aria-label="Eliminar compra"
+              title="Eliminar"
+            >
+              <TrashIcon />
+            </button>
+          ) : null}
+          {balance.has_price && !balance.is_paid ? (
+            <button type="button" className="btn-primary btn-form" onClick={openPay}>
+              Pagar
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <dialog
@@ -170,7 +209,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
       >
         <form className="data-form pay-dialog-form" onSubmit={onSubmit}>
           <h3 id="pay-dialog-title" className="data-form-title">
-            Cancelar compra
+            Pagar
           </h3>
           <p className="data-card-meta">
             Pendiente: {formatBs(balance.pending_amount)}
@@ -250,6 +289,47 @@ export function CompraDetail({ purchase, canEdit }: Props) {
             </p>
           ) : null}
         </form>
+      </dialog>
+
+      <dialog
+        ref={deleteRef}
+        className="pay-dialog"
+        aria-labelledby="delete-dialog-title"
+        onClick={(e) => {
+          if (e.target === deleteRef.current) closeDelete();
+        }}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="delete-dialog-title" className="data-form-title">
+            Eliminar compra
+          </h3>
+          <p className="data-card-meta">
+            Se borrará esta compra. Si las aves ya salieron del stock, no se puede eliminar.
+          </p>
+          <div className="form-actions form-actions-split">
+            <button
+              type="button"
+              className="btn-secondary btn-form"
+              onClick={closeDelete}
+              disabled={pending}
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              className="btn-danger btn-form"
+              onClick={onDelete}
+              disabled={pending}
+            >
+              {pending ? "Eliminando…" : "Eliminar"}
+            </button>
+          </div>
+          {deleteFeedback ? (
+            <p className="form-feedback" role="alert">
+              {deleteFeedback}
+            </p>
+          ) : null}
+        </div>
       </dialog>
     </div>
   );

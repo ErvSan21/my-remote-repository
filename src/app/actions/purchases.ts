@@ -9,7 +9,7 @@ import type { ActionResult, Purchase } from "@/lib/data-types";
 import type { PurchaseStatus } from "@/lib/types";
 
 const PURCHASE_SELECT =
-  "id, supplier_id, purchase_date, quantity_birds, unit_price, total_amount, status, notes, created_at, suppliers(name, phone)";
+  "id, supplier_id, purchase_date, quantity_birds, unit_price, total_amount, status, notes, created_by, created_at, suppliers(name, phone)";
 
 export async function listPurchasesAction(): Promise<{
   purchases: Purchase[];
@@ -57,11 +57,46 @@ export async function getPurchaseAction(id: string): Promise<{
   if (purchaseRes.error) return { purchase: null, error: purchaseRes.error.message };
   if (paymentsRes.error) return { purchase: null, error: paymentsRes.error.message };
   if (!purchaseRes.data) return { purchase: null, error: "Compra no encontrada." };
-  const [purchase] = withPaidAmounts(
+  const [purchase] = await attachCreators(supabase, withPaidAmounts(
     [purchaseRes.data as unknown as Purchase],
     paymentsRes.data ?? [],
-  );
+  ));
   return { purchase, error: null };
+}
+
+async function attachCreators(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  purchases: Purchase[],
+): Promise<Purchase[]> {
+  const ids = [
+    ...new Set(
+      purchases
+        .map((purchase) => purchase.created_by)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (ids.length === 0) return purchases;
+
+  const { data, error } = await supabase
+    .from("profile_labels")
+    .select("id, full_name, username")
+    .in("id", ids);
+  if (error || !data) return purchases;
+
+  const byId = new Map(data.map((row) => [row.id as string, row]));
+  return purchases.map((purchase) => {
+    const label = purchase.created_by ? byId.get(purchase.created_by) : undefined;
+    return {
+      ...purchase,
+      creator: label
+        ? {
+            email: null,
+            full_name: (label.full_name as string | null) ?? null,
+            username: (label.username as string | null) ?? null,
+          }
+        : null,
+    };
+  });
 }
 
 function withPaidAmounts(
@@ -185,6 +220,43 @@ export async function createPurchaseAction(input: {
         ? "Compra registrada (precio pendiente). Stock actualizado."
         : "Compra registrada. Stock actualizado.",
   };
+}
+
+export async function deletePurchaseAction(id: string): Promise<ActionResult> {
+  const auth = await requireSuperadmin();
+  if (!isUuid(id)) return { ok: false, message: "Compra inválida." };
+
+  const supabase = await createClient();
+  const { data: purchase, error } = await supabase
+    .from("purchases")
+    .select("id, quantity_birds")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !purchase) return { ok: false, message: "Compra no encontrada." };
+
+  const { removeStockForDeletedPurchase } = await import("@/lib/inventory");
+  const stock = await removeStockForDeletedPurchase(
+    id,
+    Number(purchase.quantity_birds),
+    auth.user.id,
+  );
+  if (!stock.ok) return { ok: false, message: stock.message };
+
+  const { error: payError } = await supabase
+    .from("supplier_payments")
+    .delete()
+    .eq("purchase_id", id);
+  if (payError) return { ok: false, message: payError.message };
+
+  const { error: delError } = await supabase.from("purchases").delete().eq("id", id);
+  if (delError) return { ok: false, message: delError.message };
+
+  revalidatePath("/compras");
+  revalidatePath("/pagos-proveedores");
+  revalidatePath("/proveedores");
+  revalidatePath("/inventario");
+  revalidatePath("/");
+  return { ok: true, message: "Compra eliminada." };
 }
 
 export async function updatePurchaseAction(input: {

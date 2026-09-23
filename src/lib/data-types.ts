@@ -23,9 +23,11 @@ export type Purchase = {
   total_amount: number | null;
   status: import("@/lib/types").PurchaseStatus;
   notes: string | null;
+  created_by?: string | null;
   created_at: string;
   /** Suma de pagos ligados a esta compra. */
   paid_amount?: number;
+  creator?: ProfileRef | null;
   suppliers?: { name: string; phone: string | null } | null;
 };
 

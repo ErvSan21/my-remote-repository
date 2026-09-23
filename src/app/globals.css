@@ -1610,6 +1610,99 @@ a.data-card:focus-visible {
   background: transparent;
 }
 
+.compra-info {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.15rem 1.15rem;
+}
+
+.compra-info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.compra-info-figures {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  margin-left: auto;
+  font-weight: 750;
+  color: var(--navy);
+  text-align: right;
+}
+
+.compra-info-figures .compra-define-price {
+  margin: 0;
+}
+
+.compra-info-date {
+  margin: 0.95rem 0 0;
+  text-align: center;
+  font-weight: 750;
+  color: var(--ink);
+}
+
+.compra-info-user {
+  margin: 0.2rem 0 0;
+  text-align: center;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.compra-info-notes {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.compra-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.compra-action-row .btn-primary {
+  margin-top: 0;
+  flex: 1;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+}
+
+.compra-delete-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-btn);
+  border: 1.5px solid #b91c1c;
+  background: #fff;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.compra-delete-btn:disabled,
+.btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: #b91c1c;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .compra-status-tag {
   display: inline-flex;
   align-items: center;
