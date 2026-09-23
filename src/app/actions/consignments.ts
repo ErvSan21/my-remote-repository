@@ -1,9 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireAuth, requireSuperadmin } from "@/lib/auth/guards";
+import { isAdminRole, requireAdmin, requireAuth, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { removeStockForConsignment } from "@/lib/inventory";
+import { tryRpc } from "@/lib/status-refresh";
+import {
+  boundedText,
+  isUuid,
+  parseMoney,
+  parseNonNegativeMoney,
+  parsePositiveInt,
+} from "@/lib/validation";
 import type {
   ActionResult,
   Consignment,
@@ -95,6 +103,52 @@ const PAY_SELECT_LIST =
   "id, consignment_id, amount, method, paid_at, recorded_by";
 const PAY_SELECT_DETAIL = `${PAY_SELECT_LIST}, recorder:profiles!client_payments_recorded_by_fkey(email, username, full_name)`;
 
+function labelToProfile(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as { full_name?: string | null; username?: string | null };
+  return {
+    email: null,
+    username: row.username ?? null,
+    full_name: row.full_name ?? null,
+  };
+}
+
+async function attachProfileLabels(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ventas: VentaRow[],
+): Promise<VentaRow[]> {
+  const ids = new Set<string>();
+  for (const venta of ventas) {
+    if (venta.created_by && !venta.creator) ids.add(venta.created_by);
+    for (const payment of venta.payments) {
+      if (payment.recorded_by && !payment.recorder) ids.add(payment.recorded_by);
+    }
+  }
+  if (ids.size === 0) return ventas;
+
+  const { data, error } = await supabase
+    .from("profile_labels")
+    .select("id, full_name, username")
+    .in("id", [...ids]);
+  if (error || !data) return ventas;
+
+  const byId = new Map(data.map((row) => [row.id as string, row]));
+  return ventas.map((venta) => ({
+    ...venta,
+    creator:
+      venta.creator ??
+      labelToProfile(venta.created_by ? byId.get(venta.created_by) : undefined),
+    payments: venta.payments.map((payment) => ({
+      ...payment,
+      recorder:
+        payment.recorder ??
+        labelToProfile(
+          payment.recorded_by ? byId.get(payment.recorded_by) : undefined,
+        ),
+    })),
+  }));
+}
+
 function mapPaymentRows(payData: Array<Record<string, unknown>>) {
   return payData.map((p) => ({
     id: p.id as string,
@@ -160,20 +214,23 @@ export async function getVentaAction(id: string): Promise<{
   venta: VentaRow | null;
   error: string | null;
 }> {
-  await requireAuth();
-  if (!id) return { venta: null, error: "Venta inválida." };
+  const auth = await requireAuth();
+  if (!isUuid(id)) return { venta: null, error: "Venta no encontrada." };
 
   const supabase = await createClient();
+  const adminView = isAdminRole(auth.profile.role);
+  const consSelect = adminView ? CONS_SELECT_FULL : CONS_SELECT_BASIC;
+  const paySelect = adminView ? PAY_SELECT_DETAIL : PAY_SELECT_LIST;
 
   const [consFull, payFull] = await Promise.all([
     supabase
       .from("consignments")
-      .select(CONS_SELECT_FULL)
+      .select(consSelect)
       .eq("id", id)
       .maybeSingle(),
     supabase
       .from("client_payments")
-      .select(PAY_SELECT_DETAIL)
+      .select(paySelect)
       .eq("consignment_id", id)
       .order("paid_at", { ascending: false }),
   ]);
@@ -207,9 +264,9 @@ export async function getVentaAction(id: string): Promise<{
   if (!consRow) return { venta: null, error: "Venta no encontrada." };
   if (payError) return { venta: null, error: payError };
 
-  const rows = buildVentaRows(
-    [consRow as Consignment],
-    mapPaymentRows(payData),
+  const rows = await attachProfileLabels(
+    supabase,
+    buildVentaRows([consRow as Consignment], mapPaymentRows(payData)),
   );
   return { venta: rows[0] ?? null, error: null };
 }
@@ -253,14 +310,16 @@ export async function createConsignmentAction(input: {
   pay_method?: PaymentMethod;
 }): Promise<ActionResult & { consignmentId?: string }> {
   const auth = await requireAdmin();
-  const qty = Number(input.quantity_birds);
-  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
-  if (!Number.isFinite(qty) || qty <= 0) {
+  const qty = parsePositiveInt(input.quantity_birds);
+  const notes = boundedText(input.notes);
+  if (!isUuid(input.client_id)) return { ok: false, message: "Elige un cliente." };
+  if (qty == null) {
     return { ok: false, message: "Cantidad inválida." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
 
-  const unitPrice = Number(input.unit_price);
-  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+  const unitPrice = parseMoney(input.unit_price);
+  if (unitPrice == null) {
     return { ok: false, message: "El precio unitario es obligatorio." };
   }
   const total = Math.round(qty * unitPrice * 100) / 100;
@@ -281,7 +340,7 @@ export async function createConsignmentAction(input: {
       unit_price: unitPrice,
       total_amount: total,
       status: "open" as ConsignmentStatus,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
       created_by: auth.user.id,
       left_at: new Date().toISOString(),
     })
@@ -294,7 +353,12 @@ export async function createConsignmentAction(input: {
 
   const stock = await removeStockForConsignment(row.id, qty, auth.user.id);
   if (!stock.ok) {
-    await supabase.from("consignments").delete().eq("id", row.id);
+    const removed = await tryRpc(supabase, "delete_consignment_if_unpaid", {
+      p_id: row.id,
+    });
+    if (removed === "missing") {
+      await supabase.from("consignments").delete().eq("id", row.id);
+    }
     return { ok: false, message: stock.message };
   }
 
@@ -335,8 +399,8 @@ export async function updateConsignmentPriceAction(input: {
   unit_price: number;
 }): Promise<ActionResult> {
   await requireSuperadmin();
-  const price = Number(input.unit_price);
-  if (!Number.isFinite(price) || price < 0) {
+  const price = parseNonNegativeMoney(input.unit_price);
+  if (!isUuid(input.id) || price == null) {
     return { ok: false, message: "Precio inválido." };
   }
   const supabase = await createClient();
@@ -369,11 +433,13 @@ export async function updateConsignmentAction(input: {
   notes: string;
 }): Promise<ActionResult> {
   await requireSuperadmin();
-  if (!input.id) return { ok: false, message: "Venta inválida." };
-  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
+  const notes = boundedText(input.notes);
+  if (!isUuid(input.id)) return { ok: false, message: "Venta inválida." };
+  if (!isUuid(input.client_id)) return { ok: false, message: "Elige un cliente." };
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
 
-  const unitPrice = Number(input.unit_price);
-  if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+  const unitPrice = parseMoney(input.unit_price);
+  if (unitPrice == null) {
     return { ok: false, message: "El precio unitario es obligatorio." };
   }
 
@@ -395,7 +461,7 @@ export async function updateConsignmentAction(input: {
       client_id: input.client_id,
       unit_price: unitPrice,
       total_amount: total,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.id);

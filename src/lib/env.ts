@@ -63,7 +63,7 @@ export function hasSupabaseServiceEnv(): boolean {
   return Boolean(getSupabaseUrl() && getSupabaseServiceRoleKey());
 }
 
-/** Estado booleano sin filtrar secretos — útil para diagnóstico en /login. */
+/** Estado booleano de la config pública. No incluye la service role. */
 export function getPublicEnvStatus() {
   return {
     hasUrl: Boolean(getSupabaseUrl()),
@@ -74,7 +74,6 @@ export function getPublicEnvStatus() {
       cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     ),
     hasAnyPublicKey: Boolean(getSupabasePublishableKey()),
-    hasServiceRole: Boolean(getSupabaseServiceRoleKey()),
   };
 }
 

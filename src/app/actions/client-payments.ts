@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAuth } from "@/lib/auth/guards";
+import { requireAdmin, requireAuth } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { tryRpc } from "@/lib/status-refresh";
+import { boundedText, isUuid, parseMoney } from "@/lib/validation";
 import type { ActionResult, ClientPayment } from "@/lib/data-types";
 import type { ConsignmentStatus, PaymentMethod } from "@/lib/types";
 
@@ -60,12 +62,17 @@ export async function createClientPaymentAction(input: {
   notes: string;
 }): Promise<CreateClientPaymentResult> {
   const auth = await requireAuth();
-  const amount = Number(input.amount);
+  const amount = parseMoney(input.amount);
+  const notes = boundedText(input.notes);
 
-  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!isUuid(input.client_id)) return { ok: false, message: "Elige un cliente." };
+  if (input.consignment_id && !isUuid(input.consignment_id)) {
+    return { ok: false, message: "Consignación inválida." };
+  }
+  if (amount == null) {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (!["cash", "qr", "on_delivery"].includes(input.method)) {
     return { ok: false, message: "Método inválido." };
   }
@@ -93,7 +100,7 @@ export async function createClientPaymentAction(input: {
       consignment_id: input.consignment_id,
       amount,
       method: input.method,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
       recorded_by: auth.user.id,
       paid_at: new Date().toISOString(),
     })
@@ -161,6 +168,11 @@ async function refreshConsignmentStatus(
   consignmentId: string | null,
 ) {
   if (!consignmentId) return;
+  const rpc = await tryRpc(supabase, "refresh_consignment_payment_status", {
+    p_consignment_id: consignmentId,
+  });
+  if (rpc !== "missing") return;
+
   const { data: pays } = await supabase
     .from("client_payments")
     .select("amount")
@@ -189,14 +201,19 @@ export async function updateClientPaymentAction(input: {
   method: PaymentMethod;
   notes: string;
 }): Promise<ActionResult> {
-  await requireAuth();
-  const amount = Number(input.amount);
+  await requireAdmin();
+  const amount = parseMoney(input.amount);
+  const notes = boundedText(input.notes);
 
-  if (!input.id) return { ok: false, message: "Cobro inválido." };
-  if (!input.client_id) return { ok: false, message: "Elige un cliente." };
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!isUuid(input.id)) return { ok: false, message: "Cobro inválido." };
+  if (!isUuid(input.client_id)) return { ok: false, message: "Elige un cliente." };
+  if (input.consignment_id && !isUuid(input.consignment_id)) {
+    return { ok: false, message: "Consignación inválida." };
+  }
+  if (amount == null) {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
+  if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
   if (!["cash", "qr", "on_delivery"].includes(input.method)) {
     return { ok: false, message: "Método inválido." };
   }
@@ -233,7 +250,7 @@ export async function updateClientPaymentAction(input: {
       consignment_id: input.consignment_id,
       amount,
       method: input.method,
-      notes: input.notes.trim() || null,
+      notes: notes.value || null,
     })
     .eq("id", input.id);
 
@@ -254,6 +271,7 @@ export async function updateClientPaymentAction(input: {
 
 export async function getReceiptAction(receiptId: string) {
   await requireAuth();
+  if (!isUuid(receiptId)) return { receipt: null, error: "Recibo no encontrado." };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("receipts")

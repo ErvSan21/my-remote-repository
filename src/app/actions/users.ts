@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getAuthContext } from "@/lib/auth/session";
 import { hasSupabaseServiceEnv } from "@/lib/env";
+import { isUuid } from "@/lib/validation";
 import type { AppRole } from "@/lib/types";
 
 export type UserRow = {
@@ -86,10 +87,11 @@ export async function resetPasswordAction(
     return { ok: false, message: "No autorizado." };
   }
 
-  if (!userId || newPassword.trim().length < 8) {
+  const password = newPassword.trim();
+  if (!isUuid(userId) || password.length < 8 || password.length > 72) {
     return {
       ok: false,
-      message: "La contraseña debe tener al menos 8 caracteres.",
+      message: "Usuario inválido o contraseña fuera de 8 a 72 caracteres.",
     };
   }
 
@@ -103,7 +105,7 @@ export async function resetPasswordAction(
   try {
     const admin = createServiceClient();
     const { error } = await admin.auth.admin.updateUserById(userId, {
-      password: newPassword,
+      password,
     });
 
     if (error) {

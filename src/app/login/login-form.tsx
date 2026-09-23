@@ -3,15 +3,14 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { canAccessPath, homePathForRole } from "@/lib/auth/permissions";
-import type { AppRole } from "@/lib/types";
+import { canAccessPath, homePathForRole, isAppRole } from "@/lib/auth/permissions";
+import { safeInternalPath } from "@/lib/auth/redirects";
 
 type EnvStatus = {
   hasUrl: boolean;
   hasPublishableKey: boolean;
   hasAnonKey: boolean;
   hasAnyPublicKey: boolean;
-  hasServiceRole: boolean;
 };
 
 type LoginFormProps = {
@@ -75,31 +74,32 @@ export function LoginForm({
       }
 
       const userId = data.user?.id;
-      let role: AppRole = "vendedora";
-
-      if (userId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role, active")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profile && profile.active === false) {
-          await supabase.auth.signOut();
-          setMessage("Tu cuenta está desactivada. Contacta a un administrador.");
-          setPending(false);
-          return;
-        }
-
-        if (profile?.role) {
-          role = profile.role as AppRole;
-        }
+      if (!userId) {
+        await supabase.auth.signOut();
+        setMessage("No se pudo iniciar sesión.");
+        setPending(false);
+        return;
       }
 
-      const preferred =
-        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
-          ? nextPath
-          : null;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (!profile || profile.active === false || !isAppRole(profile.role)) {
+        await supabase.auth.signOut();
+        setMessage(
+          profile && profile.active === false
+            ? "Tu cuenta está desactivada. Contacta a un administrador."
+            : "Tu cuenta no está lista. Contacta a un administrador.",
+        );
+        setPending(false);
+        return;
+      }
+
+      const role = profile.role;
+      const preferred = safeInternalPath(nextPath);
       const destination =
         preferred && canAccessPath(preferred, role)
           ? preferred
@@ -136,12 +136,6 @@ export function LoginForm({
               {envStatus.hasPublishableKey ? "OK" : "FALTA"}
             </li>
             <li>ANON_KEY (fallback): {envStatus.hasAnonKey ? "OK" : "—"}</li>
-            <li>
-              SERVICE_ROLE:{" "}
-              {envStatus.hasServiceRole
-                ? "OK (no hace falta para login)"
-                : "— (solo para reset password)"}
-            </li>
           </ul>
           <button
             type="button"

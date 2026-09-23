@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getWeeklyClosureData } from "@/app/actions/closures";
 import { PrintButton } from "@/components/print-button";
+import { requireAdmin } from "@/lib/auth/guards";
 import { formatBs, formatDateLaPaz } from "@/lib/format";
+import { isIsoDate } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +12,11 @@ type Props = {
 };
 
 export default async function CierreSemanalPage({ searchParams }: Props) {
+  await requireAdmin();
   const params = await searchParams;
-  const from = params.from || new Date().toLocaleDateString("en-CA");
-  const to = params.to || from;
+  const today = new Date().toLocaleDateString("en-CA");
+  const from = isIsoDate(params.from) ? params.from : today;
+  const to = isIsoDate(params.to) ? params.to : from;
   const data = await getWeeklyClosureData(from, to);
 
   return (

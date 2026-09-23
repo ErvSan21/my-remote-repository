@@ -2,6 +2,7 @@
 
 import { requireAdmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { isIsoDate, isUuid } from "@/lib/validation";
 import {
   debtForSupplier,
   type PaymentDebtRow,
@@ -10,6 +11,9 @@ import {
 
 export async function getClosureSupplierData(supplierId: string) {
   await requireAdmin();
+  if (!isUuid(supplierId)) {
+    return { supplier: null, purchases: [], payments: [], owed: 0 };
+  }
   const supabase = await createClient();
 
   const { data: supplier } = await supabase
@@ -56,6 +60,23 @@ export async function getClosureSupplierData(supplierId: string) {
 export async function getWeeklyClosureData(fromIso: string, toIso: string) {
   await requireAdmin();
   const supabase = await createClient();
+  if (!isIsoDate(fromIso) || !isIsoDate(toIso) || fromIso > toIso) {
+    return {
+      fromIso,
+      toIso,
+      purchases: [],
+      supplierPayments: [],
+      clientPayments: [],
+      consignments: [],
+      totals: {
+        purchasesAmount: 0,
+        paidSuppliers: 0,
+        collectedClients: 0,
+        birdsConsigned: 0,
+      },
+      errors: ["Rango de fechas inválido."],
+    };
+  }
 
   const [purchases, supplierPayments, clientPayments, consignments] =
     await Promise.all([

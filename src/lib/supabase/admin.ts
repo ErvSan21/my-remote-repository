@@ -6,6 +6,10 @@ import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/env";
  * Nunca importar desde componentes client.
  */
 export function createServiceClient() {
+  if (typeof window !== "undefined") {
+    throw new Error("El cliente service role solo puede usarse en el servidor.");
+  }
+
   const url = getSupabaseUrl();
   const serviceKey = getSupabaseServiceRoleKey();
 

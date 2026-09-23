@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClosureSupplierData } from "@/app/actions/closures";
 import { PrintButton } from "@/components/print-button";
+import { requireAdmin } from "@/lib/auth/guards";
+import { isUuid } from "@/lib/validation";
 import { PURCHASE_STATUS_LABEL, PAYMENT_METHOD_LABEL, formatBs, formatDateLaPaz } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +11,9 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function CierreProveedorPage({ params }: Props) {
+  await requireAdmin();
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const data = await getClosureSupplierData(id);
   if (!data.supplier) notFound();
 
