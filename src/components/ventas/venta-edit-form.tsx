@@ -141,7 +141,12 @@ export function VentaEditForm({ venta, clients }: Props) {
         <div className="form-actions form-actions-split">
           <Link
             href={`/ventas/${venta.id}`}
-            className="btn-secondary btn-form"
+            className={`btn-secondary btn-form${pending ? " is-disabled" : ""}`}
+            aria-disabled={pending || undefined}
+            tabIndex={pending ? -1 : undefined}
+            onClick={(e) => {
+              if (pending) e.preventDefault();
+            }}
           >
             Cancelar
           </Link>
@@ -153,7 +158,11 @@ export function VentaEditForm({ venta, clients }: Props) {
             {pending ? "Guardando…" : "Guardar"}
           </button>
         </div>
-        {feedback ? <p className="login-hint">{feedback}</p> : null}
+        {feedback ? (
+          <p className="form-feedback" role="alert">
+            {feedback}
+          </p>
+        ) : null}
       </form>
     </div>
   );

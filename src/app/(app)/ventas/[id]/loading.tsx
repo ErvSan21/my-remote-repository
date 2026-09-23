@@ -1,5 +1,5 @@
-import { PageListSkeleton } from "@/components/ui/skeleton";
+import { DetailSkeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
-  return <PageListSkeleton cards={2} />;
+  return <DetailSkeleton />;
 }

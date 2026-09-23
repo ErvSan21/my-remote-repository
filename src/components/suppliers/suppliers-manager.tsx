@@ -150,7 +150,11 @@ export function SuppliersManager({
               {pending ? "Guardando…" : "Guardar"}
             </button>
           </div>
-          {feedback ? <p className="login-hint">{feedback}</p> : null}
+          {feedback ? (
+            <p className="form-feedback" role="alert">
+              {feedback}
+            </p>
+          ) : null}
         </form>
       ) : null}
 
@@ -195,9 +199,17 @@ export function SuppliersManager({
             ))}
             {visible.length === 0 ? (
               <li className="data-empty">
-                {query.trim()
-                  ? "Ningún proveedor coincide con la búsqueda."
-                  : "No hay proveedores todavía."}
+                {query.trim() ? (
+                  <>
+                    <p className="data-empty-title">Sin resultados</p>
+                    <p>Prueba con otro nombre o celular.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="data-empty-title">No hay proveedores</p>
+                    <p>Usa «Crear proveedor» para agregar el primero.</p>
+                  </>
+                )}
               </li>
             ) : null}
           </ul>
