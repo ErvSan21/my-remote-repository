@@ -15,10 +15,23 @@ type Props = {
 
 export function VentaEditForm({ venta, clients }: Props) {
   const router = useRouter();
-  const activeClients = useMemo(
-    () => clients.filter((c) => c.active),
-    [clients],
-  );
+  const activeClients = useMemo(() => {
+    const list = clients.filter((c) => c.active);
+    if (list.some((c) => c.id === venta.client_id)) return list;
+    const current: Client = {
+      id: venta.client_id,
+      name: venta.clients?.name
+        ? `${venta.clients.name} (inactivo)`
+        : "Cliente actual",
+      zone: venta.clients?.zone ?? null,
+      phone: venta.clients?.phone ?? null,
+      notes: null,
+      active: false,
+      created_at: venta.created_at,
+      updated_at: venta.created_at,
+    };
+    return [current, ...list];
+  }, [clients, venta]);
   const [clientId, setClientId] = useState(venta.client_id);
   const [unitPrice, setUnitPrice] = useState(
     venta.unit_price == null ? "" : String(venta.unit_price),

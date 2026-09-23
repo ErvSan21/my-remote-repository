@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   debtForSupplier,
   paidTowardPurchase,
+  paymentExceedsBalance,
   statusAfterPayment,
   totalDebtAll,
   type PaymentDebtRow,
@@ -146,6 +147,18 @@ export async function createSupplierPaymentAction(input: {
         message: "Esa compra aún no tiene precio. Fija el precio primero.",
       };
     }
+    const { data: payRows, error: paidError } = await supabase
+      .from("supplier_payments")
+      .select("amount")
+      .eq("purchase_id", input.purchase_id);
+    if (paidError) return { ok: false, message: paidError.message };
+    const paid = (payRows ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    if (paymentExceedsBalance(Number(purchase.total_amount), paid, amount)) {
+      return {
+        ok: false,
+        message: "El monto supera el saldo pendiente de la compra.",
+      };
+    }
   }
 
   const { error } = await supabase.from("supplier_payments").insert({
@@ -280,6 +293,20 @@ export async function updateSupplierPaymentAction(input: {
       return {
         ok: false,
         message: "Esa compra aún no tiene precio. Fija el precio primero.",
+      };
+    }
+    const { data: payRows, error: paidError } = await supabase
+      .from("supplier_payments")
+      .select("id, amount")
+      .eq("purchase_id", input.purchase_id);
+    if (paidError) return { ok: false, message: paidError.message };
+    const paid = (payRows ?? [])
+      .filter((p) => p.id !== input.id)
+      .reduce((s, p) => s + Number(p.amount), 0);
+    if (paymentExceedsBalance(Number(purchase.total_amount), paid, amount)) {
+      return {
+        ok: false,
+        message: "El monto supera el saldo pendiente de la compra.",
       };
     }
   }

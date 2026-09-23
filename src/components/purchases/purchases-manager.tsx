@@ -10,6 +10,7 @@ import {
   formatWhenLaPaz,
 } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
+import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
   suppliers: Supplier[];
@@ -93,12 +94,26 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     setShowForm(false);
   }
 
+  const qtyNum = parsePositiveInt(form.quantity_birds);
+  const priceRaw = form.unit_price.trim();
+  const priceNum = priceRaw === "" ? null : Number(priceRaw);
+  const canSave =
+    Boolean(form.supplier_id) &&
+    qtyNum != null &&
+    (priceNum == null || (Number.isFinite(priceNum) && priceNum >= 0)) &&
+    !pending &&
+    activeSuppliers.length > 0;
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const qty = Number(form.quantity_birds);
+    const qty = parsePositiveInt(form.quantity_birds);
     const priceRaw = form.unit_price.trim();
     const unit_price = priceRaw === "" ? null : Number(priceRaw);
 
+    if (qty == null) {
+      setFeedback("La cantidad de aves debe ser un entero mayor a 0.");
+      return;
+    }
     if (unit_price != null && (!Number.isFinite(unit_price) || unit_price < 0)) {
       setFeedback("Precio inválido.");
       return;
@@ -232,7 +247,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
             <button
               type="submit"
               className="btn-primary btn-form"
-              disabled={pending || activeSuppliers.length === 0}
+              disabled={!canSave}
             >
               {pending ? "Guardando…" : "Guardar"}
             </button>

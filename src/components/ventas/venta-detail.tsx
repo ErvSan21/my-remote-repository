@@ -45,8 +45,20 @@ export function VentaDetail({ venta, canEdit }: Props) {
     [venta.payments],
   );
 
+  const amountNum = Number(amount);
+  const canPay =
+    amount.trim() !== "" &&
+    Number.isFinite(amountNum) &&
+    amountNum > 0 &&
+    amountNum <= venta.pending_amount + 0.001 &&
+    !pending;
+
   function onPagar(e: FormEvent) {
     e.preventDefault();
+    if (!canPay) {
+      setFeedback("El monto no puede superar el saldo pendiente.");
+      return;
+    }
     startTransition(async () => {
       const result = await createClientPaymentAction({
         client_id: venta.client_id,
@@ -163,6 +175,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
                   id="vd-amt"
                   type="number"
                   min={0.01}
+                  max={venta.pending_amount}
                   step="0.01"
                   required
                   value={amount}
@@ -196,7 +209,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
               <button
                 type="submit"
                 className="btn-primary btn-form"
-                disabled={pending}
+                disabled={!canPay}
               >
                 {pending ? "Guardando…" : "Guardar"}
               </button>

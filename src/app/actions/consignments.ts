@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAuth, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { removeStockForConsignment } from "@/lib/inventory";
+import {
+  consignmentStatusForBalance,
+  ventaBalance,
+} from "@/lib/debts";
+import { parsePositiveInt } from "@/lib/numbers";
 import type {
   ActionResult,
   Consignment,
@@ -72,16 +77,13 @@ function buildVentaRows(
     );
     const paid = salePayments.reduce((s, p) => s + p.amount, 0);
     const total = c.total_amount == null ? null : Number(c.total_amount);
-    const pending =
-      total == null ? Math.max(0, 0 - paid) : Math.max(0, total - paid);
-    const is_paid =
-      c.status === "closed" || (total != null && pending <= 0.001 && total > 0);
+    const balance = ventaBalance(total, paid);
     return {
       ...c,
       creator: profileDisplay(c.creator),
-      paid_amount: paid,
-      pending_amount: is_paid ? 0 : pending,
-      is_paid: Boolean(is_paid && total != null && total > 0),
+      paid_amount: balance.paid_amount,
+      pending_amount: balance.pending_amount,
+      is_paid: balance.is_paid,
       payments: salePayments,
     };
   });
@@ -253,10 +255,10 @@ export async function createConsignmentAction(input: {
   pay_method?: PaymentMethod;
 }): Promise<ActionResult & { consignmentId?: string }> {
   const auth = await requireAdmin();
-  const qty = Number(input.quantity_birds);
+  const qty = parsePositiveInt(input.quantity_birds);
   if (!input.client_id) return { ok: false, message: "Elige un cliente." };
-  if (!Number.isFinite(qty) || qty <= 0) {
-    return { ok: false, message: "Cantidad inválida." };
+  if (qty == null) {
+    return { ok: false, message: "La cantidad debe ser un entero mayor a 0." };
   }
 
   const unitPrice = Number(input.unit_price);
@@ -330,14 +332,31 @@ export async function createConsignmentAction(input: {
   };
 }
 
+async function consignmentStatusFromPayments(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  consignmentId: string,
+  total: number,
+) {
+  const { data: pays, error } = await supabase
+    .from("client_payments")
+    .select("amount")
+    .eq("consignment_id", consignmentId);
+  if (error) return { error: error.message, status: null };
+  const paid = (pays ?? []).reduce((s, p) => s + Number(p.amount), 0);
+  return {
+    error: null,
+    status: consignmentStatusForBalance(total, paid),
+  };
+}
+
 export async function updateConsignmentPriceAction(input: {
   id: string;
   unit_price: number;
 }): Promise<ActionResult> {
   await requireSuperadmin();
   const price = Number(input.unit_price);
-  if (!Number.isFinite(price) || price < 0) {
-    return { ok: false, message: "Precio inválido." };
+  if (!Number.isFinite(price) || price <= 0) {
+    return { ok: false, message: "El precio unitario es obligatorio." };
   }
   const supabase = await createClient();
   const { data: cons, error: fetchError } = await supabase
@@ -349,11 +368,23 @@ export async function updateConsignmentPriceAction(input: {
     return { ok: false, message: "Venta no encontrada." };
   }
   const total = Math.round(Number(cons.quantity_birds) * price * 100) / 100;
+  const statusResult = await consignmentStatusFromPayments(
+    supabase,
+    input.id,
+    total,
+  );
+  if (statusResult.error || !statusResult.status) {
+    return {
+      ok: false,
+      message: statusResult.error || "No se pudo recalcular el saldo.",
+    };
+  }
   const { error } = await supabase
     .from("consignments")
     .update({
       unit_price: price,
       total_amount: total,
+      status: statusResult.status,
       updated_at: new Date().toISOString(),
     })
     .eq("id", input.id);
@@ -388,6 +419,17 @@ export async function updateConsignmentAction(input: {
   }
 
   const total = Math.round(Number(cons.quantity_birds) * unitPrice * 100) / 100;
+  const statusResult = await consignmentStatusFromPayments(
+    supabase,
+    input.id,
+    total,
+  );
+  if (statusResult.error || !statusResult.status) {
+    return {
+      ok: false,
+      message: statusResult.error || "No se pudo recalcular el saldo.",
+    };
+  }
 
   const { error } = await supabase
     .from("consignments")
@@ -395,6 +437,7 @@ export async function updateConsignmentAction(input: {
       client_id: input.client_id,
       unit_price: unitPrice,
       total_amount: total,
+      status: statusResult.status,
       notes: input.notes.trim() || null,
       updated_at: new Date().toISOString(),
     })

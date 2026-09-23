@@ -80,7 +80,13 @@ export function ProveedorEditForm({ supplier }: Props) {
               onChange={(e) => setLocation(e.target.value)}
               disabled={pending}
             >
-              {BOLIVIA_DEPARTMENTS.map((loc) => (
+              {[
+                ...BOLIVIA_DEPARTMENTS,
+                ...(location &&
+                !(BOLIVIA_DEPARTMENTS as readonly string[]).includes(location)
+                  ? [location]
+                  : []),
+              ].map((loc) => (
                 <option key={loc} value={loc}>
                   {loc}
                 </option>

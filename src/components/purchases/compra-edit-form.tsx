@@ -7,6 +7,7 @@ import { updatePurchaseAction } from "@/app/actions/purchases";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Purchase, Supplier } from "@/lib/data-types";
 import { formatDateLaPaz } from "@/lib/format";
+import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
   purchase: Purchase;
@@ -15,10 +16,23 @@ type Props = {
 
 export function CompraEditForm({ purchase, suppliers }: Props) {
   const router = useRouter();
-  const activeSuppliers = useMemo(
-    () => suppliers.filter((s) => s.active),
-    [suppliers],
-  );
+  const activeSuppliers = useMemo(() => {
+    const list = suppliers.filter((s) => s.active);
+    if (list.some((s) => s.id === purchase.supplier_id)) return list;
+    const current: Supplier = {
+      id: purchase.supplier_id,
+      name: purchase.suppliers?.name
+        ? `${purchase.suppliers.name} (inactivo)`
+        : "Proveedor actual",
+      location: null,
+      phone: purchase.suppliers?.phone ?? null,
+      notes: null,
+      active: false,
+      created_at: purchase.created_at,
+      updated_at: purchase.created_at,
+    };
+    return [current, ...list];
+  }, [suppliers, purchase]);
   const [supplierId, setSupplierId] = useState(purchase.supplier_id);
   const [purchaseDate, setPurchaseDate] = useState(purchase.purchase_date);
   const [quantity, setQuantity] = useState(String(purchase.quantity_birds));
@@ -29,19 +43,18 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const qtyNum = Number(quantity);
+  const qtyNum = parsePositiveInt(quantity);
   const priceRaw = unitPrice.trim();
   const priceNum = priceRaw === "" ? null : Number(priceRaw);
   const canSave =
     Boolean(supplierId) &&
-    Number.isFinite(qtyNum) &&
-    qtyNum > 0 &&
+    qtyNum != null &&
     (priceNum == null || (Number.isFinite(priceNum) && priceNum >= 0)) &&
     !pending;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!canSave) return;
+    if (!canSave || qtyNum == null) return;
     startTransition(async () => {
       const result = await updatePurchaseAction({
         id: purchase.id,
@@ -118,6 +131,7 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
               id="pur-edit-qty"
               type="number"
               min={1}
+              step={1}
               required
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}

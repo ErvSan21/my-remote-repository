@@ -94,7 +94,13 @@ export function ClientsManager({ clients, listError }: Props) {
                 }
                 disabled={pending}
               >
-                {CLIENT_ZONES.map((z) => (
+                {[
+                  ...CLIENT_ZONES,
+                  ...(form.zone &&
+                  !(CLIENT_ZONES as readonly string[]).includes(form.zone)
+                    ? [form.zone]
+                    : []),
+                ].map((z) => (
                   <option key={z} value={z}>
                     {z}
                   </option>

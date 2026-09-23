@@ -67,18 +67,18 @@ export async function getWeeklyClosureData(fromIso: string, toIso: string) {
       supabase
         .from("supplier_payments")
         .select("*, suppliers(name)")
-        .gte("paid_at", `${fromIso}T00:00:00`)
-        .lte("paid_at", `${toIso}T23:59:59`),
+        .gte("paid_at", `${fromIso}T00:00:00-04:00`)
+        .lte("paid_at", `${toIso}T23:59:59-04:00`),
       supabase
         .from("client_payments")
         .select("*, clients(name)")
-        .gte("paid_at", `${fromIso}T00:00:00`)
-        .lte("paid_at", `${toIso}T23:59:59`),
+        .gte("paid_at", `${fromIso}T00:00:00-04:00`)
+        .lte("paid_at", `${toIso}T23:59:59-04:00`),
       supabase
         .from("consignments")
         .select("*, clients(name)")
-        .gte("left_at", `${fromIso}T00:00:00`)
-        .lte("left_at", `${toIso}T23:59:59`),
+        .gte("left_at", `${fromIso}T00:00:00-04:00`)
+        .lte("left_at", `${toIso}T23:59:59-04:00`),
     ]);
 
   const sum = (rows: { amount?: unknown; total_amount?: unknown }[], key: "amount" | "total_amount") =>

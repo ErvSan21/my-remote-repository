@@ -12,6 +12,7 @@ import {
 } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
   ventas: VentaRow[];
@@ -61,15 +62,11 @@ export function VentasManager({
   const [dateTo, setDateTo] = useState("");
 
   const unitPriceNum = Number(form.unit_price);
-  const qtyNum = Number(form.quantity_birds);
   const hasValidPrice =
     form.unit_price.trim() !== "" &&
     Number.isFinite(unitPriceNum) &&
     unitPriceNum > 0;
-  const hasValidQty =
-    form.quantity_birds.trim() !== "" &&
-    Number.isFinite(qtyNum) &&
-    qtyNum >= 1;
+  const hasValidQty = parsePositiveInt(form.quantity_birds) != null;
   const canSubmitSale =
     Boolean(form.client_id) &&
     activeClients.length > 0 &&
@@ -114,22 +111,27 @@ export function VentasManager({
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     const unit_price = Number(form.unit_price.trim());
+    const quantity_birds = parsePositiveInt(form.quantity_birds);
     if (!Number.isFinite(unit_price) || unit_price <= 0) {
       setFeedback("El precio unitario es obligatorio.");
+      return;
+    }
+    if (quantity_birds == null) {
+      setFeedback("La cantidad debe ser un entero mayor a 0.");
       return;
     }
 
     startTransition(async () => {
       const result = await createConsignmentAction({
         client_id: form.client_id,
-        quantity_birds: Number(form.quantity_birds),
+        quantity_birds,
         unit_price,
         notes: form.notes,
         pay_in_full: form.pay_in_full,
         pay_method: form.pay_method,
       });
       setFeedback(result.message);
-      if (result.ok) {
+      if (result.ok || result.consignmentId) {
         resetForm();
         router.refresh();
       }
@@ -185,6 +187,7 @@ export function VentasManager({
                 id="ve-qty"
                 type="number"
                 min={1}
+                step={1}
                 required
                 value={form.quantity_birds}
                 onChange={(e) =>
@@ -278,6 +281,8 @@ export function VentasManager({
           {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
+
+      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
 
       {!showForm ? (
         <>
