@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-function formatUnits(count: number) {
+function formatCount(count: number, label: string) {
   const units = count.toLocaleString("es-BO", { maximumFractionDigits: 0 });
-  return `${units} unidades`;
+  return `${units} ${label}`;
 }
 
 type Props = {
@@ -114,7 +114,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="ventas"
           label="Ventas"
           value={formatBs(ventasTotal)}
-          detail={formatUnits(ventasQty)}
+          detail={formatCount(ventasQty, "vendidas")}
           hint={hint}
           tone="orange"
         />
@@ -122,7 +122,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="compras"
           label="Compras"
           value={formatBs(comprasTotal)}
-          detail={formatUnits(comprasQty)}
+          detail={formatCount(comprasQty, "disponibles")}
           hint={hint}
           tone="orange"
         />
