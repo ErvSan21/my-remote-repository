@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createConsignmentAction } from "@/app/actions/consignments";
@@ -56,7 +56,9 @@ export function VentasManager({
   const week = weekBoundsLaPaz();
   const [dateFrom, setDateFrom] = useState(week.from);
   const [dateTo, setDateTo] = useState(week.to);
-  const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}`);
+  const [payFilter, setPayFilter] = useState<"all" | "pending" | "paid">("all");
+  const noticeRef = useRef<HTMLDialogElement>(null);
+  const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}|${payFilter}`);
 
   const unitPriceNum = Number(form.unit_price);
   const hasValidPrice =
@@ -86,9 +88,26 @@ export function VentasManager({
       const saleDay = dayKeyLaPaz(v.created_at);
       if (dateFrom && saleDay < dateFrom) return false;
       if (dateTo && saleDay > dateTo) return false;
+      if (payFilter === "paid" && !v.is_paid) return false;
+      if (payFilter === "pending" && v.is_paid) return false;
       return true;
     });
-  }, [ventas, query, dateFrom, dateTo, rangeInvalid]);
+  }, [ventas, query, dateFrom, dateTo, rangeInvalid, payFilter]);
+
+  useEffect(() => {
+    const dialog = noticeRef.current;
+    if (!feedback || !dialog || dialog.open) return;
+    dialog.showModal();
+  }, [feedback]);
+
+  function closeNotice() {
+    noticeRef.current?.close();
+    setFeedback(null);
+  }
+
+  function togglePayFilter(next: "pending" | "paid") {
+    setPayFilter((current) => (current === next ? "all" : next));
+  }
 
   function resetForm() {
     setForm({
@@ -281,15 +300,27 @@ export function VentasManager({
               {pending ? "Guardando…" : "Crear"}
             </button>
           </div>
-          {feedback ? (
-            <p className="form-feedback" role="alert">
-              {feedback}
-            </p>
-          ) : null}
         </form>
       ) : null}
 
-      {!showForm && feedback ? <p className="login-hint">{feedback}</p> : null}
+      <dialog
+        ref={noticeRef}
+        className="pay-dialog"
+        aria-labelledby="venta-notice-title"
+        onClose={() => setFeedback(null)}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="venta-notice-title" className="data-form-title">
+            Venta
+          </h3>
+          <p className="data-card-meta">{feedback}</p>
+          <div className="module-form-actions">
+            <button type="button" className="btn-primary" onClick={closeNotice}>
+              Listo
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       {!showForm ? (
         <>
@@ -319,22 +350,31 @@ export function VentasManager({
                   La fecha de inicio es posterior a la de fin.
                 </p>
               ) : null}
+              <div className="status-tags" role="group" aria-label="Estado de pago">
+                <button
+                  type="button"
+                  className={`status-tag is-pending${payFilter === "pending" ? " is-on" : ""}`}
+                  aria-pressed={payFilter === "pending"}
+                  onClick={() => togglePayFilter("pending")}
+                >
+                  Pendientes
+                </button>
+                <button
+                  type="button"
+                  className={`status-tag is-paid${payFilter === "paid" ? " is-on" : ""}`}
+                  aria-pressed={payFilter === "paid"}
+                  onClick={() => togglePayFilter("paid")}
+                >
+                  Pagados
+                </button>
+              </div>
             </div>
 
           <ul className="data-list">
             {visible.slice(0, shown).map((v) => {
               const name = v.clients?.name ?? "Cliente";
-              const statusKey = v.is_paid
-                ? "paid"
-                : v.paid_amount > 0.001
-                  ? "partial"
-                  : "pending";
-              const statusLabel =
-                statusKey === "paid"
-                  ? "Pagado"
-                  : statusKey === "partial"
-                    ? "Parcial"
-                    : "Pendiente";
+              const statusKey = v.is_paid ? "paid" : "pending";
+              const statusLabel = statusKey === "paid" ? "Pagado" : "Pendiente";
               return (
                 <li key={v.id}>
                   <Link href={`/ventas/${v.id}`} className="data-card proveedor-compra">
@@ -354,9 +394,7 @@ export function VentasManager({
                         className={
                           statusKey === "paid"
                             ? "compra-status-tag is-paid"
-                            : statusKey === "partial"
-                              ? "compra-status-tag is-partial"
-                              : "compra-status-tag is-pending"
+                            : "compra-status-tag is-pending"
                         }
                       >
                         {statusLabel}
@@ -379,7 +417,7 @@ export function VentasManager({
                 ) : (
                   <>
                     <p className="data-empty-title">Sin resultados</p>
-                    <p>Prueba con otro cliente, código o rango de fechas.</p>
+                    <p>Prueba con otro cliente, estado o rango de fechas.</p>
                   </>
                 )}
               </li>

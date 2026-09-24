@@ -120,12 +120,14 @@ export function VentaDetail({ venta, canEdit }: Props) {
           {" · "}
           Total: {formatBs(venta.total_amount)}
         </p>
-        <p className="data-card-meta">
-          Estado:{" "}
-          {venta.is_paid
-            ? "Pagado"
-            : `Pendiente ${formatBs(venta.pending_amount)}`}
-        </p>
+        {venta.pending_amount > 0.001 ? (
+          <p className="venta-pending-banner">
+            <span>Pendiente de pago</span>
+            <strong>{formatBs(venta.pending_amount)}</strong>
+          </p>
+        ) : (
+          <p className="compra-status-tag is-paid venta-paid-banner">Pagado</p>
+        )}
         <p className="data-card-meta">
           Registrado por: {personEmail(venta.creator)}
         </p>
@@ -168,9 +170,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
         showPagar ? (
           <form className="data-form" onSubmit={onPagar}>
             <h3 className="data-form-title">Pagar</h3>
-            <p className="data-card-meta">
-              Pendiente: {formatBs(venta.pending_amount)}
-            </p>
             <div className="field-row">
               <div className="field">
                 <label htmlFor="vd-amt">Monto (Bs)</label>

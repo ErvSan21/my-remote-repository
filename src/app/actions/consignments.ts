@@ -409,7 +409,7 @@ export async function createConsignmentAction(input: {
   revalidateVentas(row.id);
   return {
     ok: true,
-    message: "Venta a crédito registrada. Stock descontado.",
+    message: "Venta registrada.",
     consignmentId: row.id,
   };
 }
