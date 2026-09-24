@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { listVentasAction } from "@/app/actions/consignments";
+import { listPurchasesAction } from "@/app/actions/purchases";
+import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
 import { DashRange } from "@/components/dash-range";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
-import { createClient } from "@/lib/supabase/server";
+import { purchaseBalance } from "@/lib/debts";
 import { formatBs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +18,16 @@ function todayLaPaz() {
   });
 }
 
-function dayStart(date: string) {
-  return `${date}T00:00:00-04:00`;
+function dayKey(iso: string | null | undefined) {
+  if (!iso) return "";
+  if (DATE_KEY.test(iso)) return iso;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
 }
 
-function dayEnd(date: string) {
-  return `${date}T23:59:59-04:00`;
+function inRange(day: string, from: string, to: string) {
+  return Boolean(day) && day >= from && day <= to;
 }
 
 type Props = {
@@ -34,83 +41,41 @@ export default async function DashboardPage({ searchParams }: Props) {
   const from = params.from && DATE_KEY.test(params.from) ? params.from : today;
   const to = params.to && DATE_KEY.test(params.to) ? params.to : today;
   const rangeInvalid = from > to;
-  const sameDay = from === to;
-  const hint = sameDay
-    ? from === today
-      ? "Del día"
-      : "Del día elegido"
-    : "Del periodo";
+  const hint = from === to ? (from === today ? "Del día" : "Del día elegido") : "Del periodo";
 
-  const supabase = await createClient();
-  const ventasQuery = rangeInvalid
-    ? { data: [] as { id: string; total_amount: number | null }[] }
-    : await supabase
-        .from("consignments")
-        .select("id, total_amount")
-        .gte("created_at", dayStart(from))
-        .lte("created_at", dayEnd(to));
-  const comprasQuery = rangeInvalid
-    ? { data: [] as { id: string; total_amount: number | null; status: string | null }[] }
-    : await supabase
-        .from("purchases")
-        .select("id, total_amount, status")
-        .gte("purchase_date", from)
-        .lte("purchase_date", to);
-
-  const ventas = ventasQuery.data ?? [];
-  const compras = comprasQuery.data ?? [];
-  const ventaIds = ventas.map((row) => row.id as string);
-  const compraIds = compras.map((row) => row.id as string);
-
-  const [cobrosRes, pagosRes] = await Promise.all([
-    ventaIds.length
-      ? supabase
-          .from("client_payments")
-          .select("consignment_id, amount")
-          .in("consignment_id", ventaIds)
-      : Promise.resolve({ data: [] }),
-    compraIds.length
-      ? supabase
-          .from("supplier_payments")
-          .select("purchase_id, amount")
-          .in("purchase_id", compraIds)
-      : Promise.resolve({ data: [] }),
+  const [ventasRes, purchasesRes, debts] = await Promise.all([
+    listVentasAction(),
+    listPurchasesAction(),
+    getSupplierDebtsAction(),
   ]);
+  const loadError = ventasRes.error || purchasesRes.error || debts.error;
 
-  const cobrado = new Map<string, number>();
-  for (const row of cobrosRes.data ?? []) {
-    const id = row.consignment_id as string;
-    cobrado.set(id, (cobrado.get(id) ?? 0) + Number(row.amount ?? 0));
-  }
-  const pagado = new Map<string, number>();
-  for (const row of pagosRes.data ?? []) {
-    const id = row.purchase_id as string | null;
-    if (!id) continue;
-    pagado.set(id, (pagado.get(id) ?? 0) + Number(row.amount ?? 0));
-  }
+  const ventas = rangeInvalid
+    ? []
+    : ventasRes.ventas.filter((venta) => inRange(dayKey(venta.created_at), from, to));
+  const compras = rangeInvalid
+    ? []
+    : purchasesRes.purchases.filter((purchase) =>
+        inRange(dayKey(purchase.created_at || purchase.purchase_date), from, to),
+      );
 
   const ventasTotal = ventas.reduce(
-    (sum, row) => sum + Number(row.total_amount ?? 0),
+    (sum, venta) => sum + Number(venta.total_amount ?? 0),
     0,
   );
   const comprasTotal = compras.reduce(
-    (sum, row) => sum + Number(row.total_amount ?? 0),
+    (sum, purchase) => sum + Number(purchase.total_amount ?? 0),
     0,
   );
-  const porCobrar = ventas.reduce((sum, row) => {
-    const total = Number(row.total_amount ?? 0);
-    const paid = cobrado.get(row.id as string) ?? 0;
-    return sum + Math.max(0, Math.round((total - paid) * 100) / 100);
-  }, 0);
-  const porPagar = compras.reduce((sum, row) => {
-    if (row.total_amount == null) return sum;
-    const total = Number(row.total_amount);
-    const paid = pagado.get(row.id as string) ?? 0;
-    return sum + Math.max(0, Math.round((total - paid) * 100) / 100);
-  }, 0);
-  const pendingPrice = compras.filter(
-    (row) => row.status === "pending_price" || row.total_amount == null,
-  ).length;
+  const porCobrar = ventasRes.ventas.reduce(
+    (sum, venta) => sum + Number(venta.pending_amount ?? 0),
+    0,
+  );
+  const porPagar = debts.totalOwed;
+  const pendingPrice = compras.filter((purchase) => {
+    const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
+    return !balance.has_price;
+  }).length;
 
   return (
     <div className="dash-page">
@@ -122,6 +87,16 @@ export default async function DashboardPage({ searchParams }: Props) {
       {rangeInvalid ? (
         <p className="form-feedback dash-range-note" role="alert">
           La fecha de inicio es posterior a la de fin.
+        </p>
+      ) : null}
+      {loadError ? (
+        <p className="form-feedback dash-range-note" role="alert">
+          No se pudieron cargar los datos. {loadError}
+        </p>
+      ) : null}
+      {!loadError && !rangeInvalid && ventas.length === 0 && compras.length === 0 ? (
+        <p className="dash-range-note">
+          No hay ventas ni compras en este día. Las cuentas muestran el saldo pendiente.
         </p>
       ) : null}
 
@@ -144,14 +119,14 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="cobrar"
           label="Cuentas por cobrar"
           value={formatBs(porCobrar)}
-          hint={hint}
+          hint="Saldo actual"
           tone="blue"
         />
         <MetricCard
           icon="pagar"
           label="Cuentas por pagar"
           value={formatBs(porPagar)}
-          hint={hint}
+          hint="Saldo actual"
           tone="blue"
         />
       </section>
