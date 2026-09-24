@@ -89,7 +89,7 @@ export function ClientPaymentsManager({
     setClientId(p.client_id);
     setConsignmentId(p.consignment_id ?? "");
     setAmount(String(p.amount));
-    setMethod(p.method);
+    setMethod(p.method === "qr" ? "qr" : "cash");
     setNotes(p.notes ?? "");
     setShowForm(true);
     setFeedback(null);
@@ -220,7 +220,6 @@ export function ClientPaymentsManager({
               >
                 <option value="cash">Efectivo</option>
                 <option value="qr">QR</option>
-                <option value="on_delivery">Al entregar</option>
             </select>
           </div>
           <div className="field">

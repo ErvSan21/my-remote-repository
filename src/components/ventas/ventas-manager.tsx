@@ -279,7 +279,6 @@ export function VentasManager({
               >
                 <option value="cash">Efectivo</option>
                 <option value="qr">QR</option>
-                <option value="on_delivery">Al entregar</option>
               </select>
             ) : null}
           </div>

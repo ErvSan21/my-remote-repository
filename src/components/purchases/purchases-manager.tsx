@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 import { parsePositiveInt } from "@/lib/numbers";
 import { DateRangeFields } from "@/components/date-range-fields";
-import { dayKeyLaPaz, todayLaPaz, weekBoundsLaPaz } from "@/lib/dates";
+import { dayKeyLaPaz, weekBoundsLaPaz } from "@/lib/dates";
 
 type Props = {
   suppliers: Supplier[];
@@ -24,7 +24,6 @@ function normalize(value: string | null | undefined) {
 
 const emptyForm = {
   supplier_id: "",
-  purchase_date: todayLaPaz(),
   quantity_birds: "",
   unit_price: "",
   notes: "",
@@ -78,7 +77,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     setForm({
       ...emptyForm,
       supplier_id: activeSuppliers[0]?.id ?? "",
-      purchase_date: todayLaPaz(),
     });
     setShowForm(false);
   }
@@ -111,7 +109,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     startTransition(async () => {
       const result = await createPurchaseAction({
         supplier_id: form.supplier_id,
-        purchase_date: form.purchase_date,
         quantity_birds: qty,
         unit_price,
         notes: form.notes,
@@ -133,7 +130,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
           setForm({
             ...emptyForm,
             supplier_id: activeSuppliers[0]?.id ?? "",
-            purchase_date: todayLaPaz(),
           });
           setShowForm(true);
           setFeedback(null);
@@ -167,22 +163,6 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="field">
-            <label className="sr-only" htmlFor="pur-date">
-              Fecha
-            </label>
-            <input
-              id="pur-date"
-              type="date"
-              required
-              aria-label="Fecha"
-              value={form.purchase_date}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, purchase_date: e.target.value }))
-              }
-              disabled={pending}
-            />
           </div>
           <div className="field">
             <label className="sr-only" htmlFor="pur-qty">

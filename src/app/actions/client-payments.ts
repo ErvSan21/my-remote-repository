@@ -68,7 +68,7 @@ export async function createClientPaymentAction(input: {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
   if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
-  if (!["cash", "qr", "on_delivery"].includes(input.method)) {
+  if (input.method !== "cash" && input.method !== "qr") {
     return { ok: false, message: "Método inválido." };
   }
 
@@ -226,7 +226,7 @@ export async function updateClientPaymentAction(input: {
     return { ok: false, message: "El monto debe ser mayor a 0." };
   }
   if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
-  if (!["cash", "qr", "on_delivery"].includes(input.method)) {
+  if (input.method !== "cash" && input.method !== "qr") {
     return { ok: false, message: "Método inválido." };
   }
 

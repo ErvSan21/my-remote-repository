@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { PURCHASE_LIST_SELECT, readPurchasesForList, readSupplierPaymentAmounts } from "@/lib/reads";
+import { todayLaPaz } from "@/lib/dates";
 import { boundedText, isIsoDate, isUuid, parseMoney, parsePositiveInt } from "@/lib/validation";
 import { paidTowardPurchase, purchaseBalance, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
@@ -132,7 +133,6 @@ function resolveAmounts(quantity: number, unitPrice: number | null) {
 
 export async function createPurchaseAction(input: {
   supplier_id: string;
-  purchase_date: string;
   quantity_birds: number;
   unit_price: number | null;
   notes: string;
@@ -150,9 +150,7 @@ export async function createPurchaseAction(input: {
     };
   }
   if (!notes.ok) return { ok: false, message: "La nota es demasiado larga." };
-  if (input.purchase_date && !isIsoDate(input.purchase_date)) {
-    return { ok: false, message: "Fecha inválida." };
-  }
+  const purchaseDate = todayLaPaz();
   if (input.unit_price != null && parseMoney(input.unit_price) == null) {
     return { ok: false, message: "Precio inválido." };
   }
@@ -163,7 +161,7 @@ export async function createPurchaseAction(input: {
     .from("purchases")
     .insert({
       supplier_id: input.supplier_id,
-      purchase_date: input.purchase_date || new Date().toISOString().slice(0, 10),
+      purchase_date: purchaseDate,
       quantity_birds: qty,
       unit_price: amounts.unit_price,
       total_amount: amounts.total_amount,
@@ -183,7 +181,7 @@ export async function createPurchaseAction(input: {
     purchase.id,
     qty,
     auth.user.id,
-    `Compra ${input.purchase_date}`,
+    `Compra ${purchaseDate}`,
   );
   if (!stock.ok) {
     await supabase

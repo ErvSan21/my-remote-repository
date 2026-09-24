@@ -195,7 +195,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
                 >
                   <option value="cash">Efectivo</option>
                   <option value="qr">QR</option>
-                  <option value="on_delivery">Al entregar</option>
                 </select>
               </div>
             </div>
