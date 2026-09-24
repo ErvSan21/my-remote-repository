@@ -374,11 +374,13 @@ export function VentasManager({
               const name = v.clients?.name ?? "Cliente";
               const statusKey = v.is_paid ? "paid" : "pending";
               const statusLabel = statusKey === "paid" ? "Pagado" : "Pendiente";
+              const restante = v.is_paid ? 0 : Number(v.pending_amount ?? 0);
               return (
                 <li key={v.id}>
                   <Link href={`/ventas/${v.id}`} className="data-card proveedor-compra">
                     <div>
                       <p className="data-card-title">{name}</p>
+                      <p className="venta-card-total">{formatBs(v.total_amount)}</p>
                       <p className="data-card-meta">
                         {v.quantity_birds} Unidades
                       </p>
@@ -399,7 +401,7 @@ export function VentasManager({
                         {statusLabel}
                       </span>
                       <p className="proveedor-compra-amount">
-                        {formatBs(v.total_amount)}
+                        {formatBs(restante)}
                       </p>
                     </div>
                   </Link>
