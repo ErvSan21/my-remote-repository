@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
-import type { ProfileRef, VentaRow } from "@/lib/data-types";
+import type { ProfileRef, VentaPayment, VentaRow } from "@/lib/data-types";
 import {
   PAYMENT_METHOD_LABEL,
   formatBs,
@@ -41,25 +41,33 @@ export function VentaDetail({ venta, canEdit }: Props) {
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [addedPayments, setAddedPayments] = useState<VentaPayment[]>([]);
   const payRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDialogElement>(null);
-  const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
 
-  const paymentsChrono = useMemo(
-    () =>
-      [...venta.payments].sort((a, b) =>
-        a.paid_at < b.paid_at ? -1 : a.paid_at > b.paid_at ? 1 : 0,
-      ),
-    [venta.payments],
-  );
+  const paymentsChrono = useMemo(() => {
+    const known = new Set(venta.payments.map((payment) => payment.id));
+    const extras = addedPayments.filter((payment) => !known.has(payment.id));
+    return [...venta.payments, ...extras].sort((a, b) =>
+      a.paid_at < b.paid_at ? -1 : a.paid_at > b.paid_at ? 1 : 0,
+    );
+  }, [venta.payments, addedPayments]);
+
+  const pendingLeft = useMemo(() => {
+    const known = new Set(venta.payments.map((payment) => payment.id));
+    const extraPaid = addedPayments
+      .filter((payment) => !known.has(payment.id))
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+    return Math.max(0, Math.round((venta.pending_amount - extraPaid) * 100) / 100);
+  }, [venta.payments, venta.pending_amount, addedPayments]);
 
   const amountNum = Number(amount);
   const canPay =
     amount.trim() !== "" &&
     Number.isFinite(amountNum) &&
     amountNum > 0 &&
-    amountNum <= venta.pending_amount + 0.001 &&
+    amountNum <= pendingLeft + 0.001 &&
     !pending;
 
   useEffect(() => {
@@ -73,7 +81,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
   }
 
   function openPay() {
-    const due = Math.round(venta.pending_amount * 100) / 100;
+    const due = Math.round(pendingLeft * 100) / 100;
     setAmount(due > 0 ? String(due) : "");
     setMethod("cash");
     setFeedback(null);
@@ -103,9 +111,21 @@ export function VentaDetail({ venta, canEdit }: Props) {
         return;
       }
       setFeedback(null);
+      if (result.paymentId) {
+        setAddedPayments((current) => [
+          {
+            id: result.paymentId as string,
+            amount: Number(amount),
+            method,
+            paid_at: result.paidAt ?? new Date().toISOString(),
+            recorded_by: null,
+          },
+          ...current,
+        ]);
+      }
       payRef.current?.close();
-      savedRef.current = true;
       setNotice(result.message);
+      router.refresh();
     });
   }
 
@@ -151,10 +171,10 @@ export function VentaDetail({ venta, canEdit }: Props) {
           {" · "}
           Total: {formatBs(venta.total_amount)}
         </p>
-        {venta.pending_amount > 0.001 ? (
+        {pendingLeft > 0.001 ? (
           <p className="venta-pending-banner">
             <span>Pendiente de pago</span>
-            <strong>{formatBs(venta.pending_amount)}</strong>
+            <strong>{formatBs(pendingLeft)}</strong>
           </p>
         ) : (
           <p className="compra-status-tag is-paid venta-paid-banner">Pagado</p>
@@ -201,13 +221,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
         ref={noticeRef}
         className="pay-dialog"
         aria-labelledby="venta-cobro-notice-title"
-        onClose={() => {
-          setNotice(null);
-          if (!savedRef.current) return;
-          savedRef.current = false;
-          router.push("/ventas");
-          router.refresh();
-        }}
+        onClose={() => setNotice(null)}
       >
         <div className="pay-dialog-form">
           <h3 id="venta-cobro-notice-title" className="data-form-title">
@@ -222,7 +236,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
         </div>
       </dialog>
 
-      {venta.pending_amount > 0.001 ? (
+      {pendingLeft > 0.001 ? (
         <button type="button" className="btn-primary btn-form" onClick={openPay}>
           Pagar
         </button>
@@ -242,7 +256,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
           </h3>
           <p className="venta-pending-banner">
             <span>Pendiente de pago</span>
-            <strong>{formatBs(venta.pending_amount)}</strong>
+            <strong>{formatBs(pendingLeft)}</strong>
           </p>
           <div className="field">
             <label htmlFor="vd-amt">Monto (Bs)</label>

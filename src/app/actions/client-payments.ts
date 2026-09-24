@@ -47,6 +47,8 @@ export async function listClientPaymentsAction(): Promise<{
 export type CreateClientPaymentResult = ActionResult & {
   receiptId?: string;
   receiptCode?: string;
+  paymentId?: string;
+  paidAt?: string;
 };
 
 export async function createClientPaymentAction(input: {
@@ -102,6 +104,7 @@ export async function createClientPaymentAction(input: {
     }
   }
 
+  const paidAt = new Date().toISOString();
   const { data: payment, error: payError } = await supabase
     .from("client_payments")
     .insert({
@@ -111,7 +114,7 @@ export async function createClientPaymentAction(input: {
       method: input.method,
       notes: notes.value || null,
       recorded_by: auth.user.id,
-      paid_at: new Date().toISOString(),
+      paid_at: paidAt,
     })
     .select("id")
     .single();
@@ -164,6 +167,7 @@ export async function createClientPaymentAction(input: {
   }
 
   revalidatePath("/ventas");
+  if (input.consignment_id) revalidatePath(`/ventas/${input.consignment_id}`);
   revalidatePath("/clientes");
   revalidatePath("/recibos");
   revalidatePath("/");
@@ -172,6 +176,8 @@ export async function createClientPaymentAction(input: {
     message: `Cobro registrado. Recibo ${receipt.code}`,
     receiptId: receipt.id,
     receiptCode: receipt.code,
+    paymentId: payment.id,
+    paidAt,
   };
 }
 
