@@ -332,24 +332,44 @@ export async function createConsignmentAction(input: {
   }
 
   const supabase = await createClient();
-  const { data: row, error } = await supabase
+  const consignmentId = crypto.randomUUID();
+  const { data: lastNumber } = await supabase
     .from("consignments")
-    .insert({
-      client_id: input.client_id,
-      quantity_birds: qty,
-      unit_price: unitPrice,
-      total_amount: total,
-      status: "open" as ConsignmentStatus,
-      notes: notes.value || null,
-      created_by: auth.user.id,
-      left_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
+    .select("sale_number")
+    .order("sale_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSaleNumber =
+    lastNumber?.sale_number != null ? Number(lastNumber.sale_number) + 1 : null;
 
-  if (error || !row) {
-    return { ok: false, message: error?.message || "No se creó la venta." };
+  // Sin .select(): devolver la fila exige política SELECT y, si falta,
+  // Postgres rechaza el alta con "new row violates row-level security".
+  const inserted = await supabase.from("consignments").insert({
+    id: consignmentId,
+    client_id: input.client_id,
+    quantity_birds: qty,
+    unit_price: unitPrice,
+    total_amount: total,
+    status: "open" as ConsignmentStatus,
+    notes: notes.value || null,
+    created_by: auth.user.id,
+    left_at: new Date().toISOString(),
+    ...(nextSaleNumber != null ? { sale_number: nextSaleNumber } : {}),
+  });
+
+  if (inserted.error) {
+    const denied =
+      inserted.error.code === "42501" ||
+      inserted.error.message.includes("row-level security");
+    return {
+      ok: false,
+      message: denied
+        ? "No se pudo registrar la venta por permisos de la base. En Supabase → SQL Editor ejecuta supabase/migrations/006_consignments_write.sql y vuelve a intentar."
+        : inserted.error.message,
+    };
   }
+
+  const row = { id: consignmentId };
 
   const stock = await removeStockForConsignment(row.id, qty, auth.user.id);
   if (!stock.ok) {

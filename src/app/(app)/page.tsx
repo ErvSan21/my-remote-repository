@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { listVentasAction } from "@/app/actions/consignments";
 import { listPurchasesAction } from "@/app/actions/purchases";
-import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
 import { DashRange } from "@/components/dash-range";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
@@ -16,6 +15,19 @@ function todayLaPaz() {
   return new Date().toLocaleDateString("en-CA", {
     timeZone: "America/La_Paz",
   });
+}
+
+function weekBoundsLaPaz(today = todayLaPaz()) {
+  const [year, month, day] = today.split("-").map(Number);
+  const anchor = new Date(Date.UTC(year, month - 1, day));
+  const weekday = anchor.getUTCDay();
+  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+  const monday = new Date(anchor);
+  monday.setUTCDate(anchor.getUTCDate() + mondayOffset);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const iso = (date: Date) => date.toISOString().slice(0, 10);
+  return { from: iso(monday), to: iso(sunday) };
 }
 
 function dayKey(iso: string | null | undefined) {
@@ -37,18 +49,22 @@ type Props = {
 export default async function DashboardPage({ searchParams }: Props) {
   await requireAdmin();
   const params = await searchParams;
-  const today = todayLaPaz();
-  const from = params.from && DATE_KEY.test(params.from) ? params.from : today;
-  const to = params.to && DATE_KEY.test(params.to) ? params.to : today;
+  const week = weekBoundsLaPaz();
+  const from = params.from && DATE_KEY.test(params.from) ? params.from : week.from;
+  const to = params.to && DATE_KEY.test(params.to) ? params.to : week.to;
   const rangeInvalid = from > to;
-  const hint = from === to ? (from === today ? "Del día" : "Del día elegido") : "Del periodo";
+  const hint =
+    from === week.from && to === week.to
+      ? "De la semana"
+      : from === to
+        ? "Del día elegido"
+        : "Del periodo";
 
-  const [ventasRes, purchasesRes, debts] = await Promise.all([
+  const [ventasRes, purchasesRes] = await Promise.all([
     listVentasAction(),
     listPurchasesAction(),
-    getSupplierDebtsAction(),
   ]);
-  const loadError = ventasRes.error || purchasesRes.error || debts.error;
+  const loadError = ventasRes.error || purchasesRes.error;
 
   const ventas = rangeInvalid
     ? []
@@ -67,11 +83,14 @@ export default async function DashboardPage({ searchParams }: Props) {
     (sum, purchase) => sum + Number(purchase.total_amount ?? 0),
     0,
   );
-  const porCobrar = ventasRes.ventas.reduce(
+  const porCobrar = ventas.reduce(
     (sum, venta) => sum + Number(venta.pending_amount ?? 0),
     0,
   );
-  const porPagar = debts.totalOwed;
+  const porPagar = compras.reduce((sum, purchase) => {
+    const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
+    return sum + (balance.pending_amount ?? 0);
+  }, 0);
   const pendingPrice = compras.filter((purchase) => {
     const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
     return !balance.has_price;
@@ -96,7 +115,9 @@ export default async function DashboardPage({ searchParams }: Props) {
       ) : null}
       {!loadError && !rangeInvalid && ventas.length === 0 && compras.length === 0 ? (
         <p className="dash-range-note">
-          No hay ventas ni compras en este día. Las cuentas muestran el saldo pendiente.
+          {from === week.from && to === week.to
+            ? "No hay ventas ni compras en esta semana."
+            : "No hay ventas ni compras en este periodo."}
         </p>
       ) : null}
 
@@ -119,14 +140,14 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="cobrar"
           label="Cuentas por cobrar"
           value={formatBs(porCobrar)}
-          hint="Saldo actual"
+          hint={hint}
           tone="blue"
         />
         <MetricCard
           icon="pagar"
           label="Cuentas por pagar"
           value={formatBs(porPagar)}
-          hint="Saldo actual"
+          hint={hint}
           tone="blue"
         />
       </section>
