@@ -1235,6 +1235,52 @@ a {
   gap: 0.45rem;
 }
 
+.profile-summary {
+  align-items: flex-start;
+}
+
+.profile-facts {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.profile-facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.profile-facts dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ink-soft);
+}
+
+.profile-facts dd {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 750;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.profile-password-link {
+  display: block;
+  margin: 1.15rem auto 0;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  background: none;
+  color: var(--accent-deep);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  text-align: center;
+}
+
 .proveedor-pending {
   margin: 0.45rem 0 0;
   font-weight: 750;
