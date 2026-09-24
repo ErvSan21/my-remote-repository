@@ -4,24 +4,46 @@ import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/data-types";
-import { parsePhone } from "@/lib/validation";
+import { boundedText, parsePhone } from "@/lib/validation";
 
-export async function updateOwnPhoneAction(phone: string): Promise<ActionResult> {
-  await requireAuth();
-  const parsed = parsePhone(phone);
+const NAME_MAX = 60;
+
+export async function updateOwnProfileAction(input: {
+  firstName: string;
+  lastName: string;
+  phone: string;
+}): Promise<ActionResult> {
+  const auth = await requireAuth();
+  const first = boundedText(input.firstName, NAME_MAX);
+  const last = boundedText(input.lastName, NAME_MAX);
+  if (!first.ok || !last.ok) {
+    return { ok: false, message: "El nombre es demasiado largo." };
+  }
+  if (!first.value) return { ok: false, message: "Escribe el nombre." };
+
+  const parsed = parsePhone(input.phone);
   if (!parsed.ok) return { ok: false, message: parsed.message };
   if (parsed.value && parsed.value.length !== 8) {
     return { ok: false, message: "El celular debe tener 8 números." };
   }
 
+  const fullName = [first.value, last.value].filter(Boolean).join(" ");
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({
-    data: { phone: parsed.value },
+    data: { full_name: fullName, phone: parsed.value },
   });
   if (error) return { ok: false, message: error.message };
 
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName })
+    .eq("id", auth.user.id);
+  if (profileError) {
+    await supabase.rpc("update_own_profile", { p_full_name: fullName });
+  }
+
   revalidatePath("/perfil");
-  return { ok: true, message: "Celular actualizado." };
+  return { ok: true, message: "Datos actualizados." };
 }
 
 export async function changePasswordAction(input: {

@@ -4,7 +4,7 @@ import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   changePasswordAction,
-  updateOwnPhoneAction,
+  updateOwnProfileAction,
 } from "@/app/actions/profile";
 import { PencilIcon } from "@/components/ui/pencil-icon";
 import { phoneDigits } from "@/lib/validation";
@@ -24,6 +24,8 @@ export function ProfileForm({ firstName, lastName, email, phone }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [nombre, setNombre] = useState(firstName);
+  const [apellido, setApellido] = useState(lastName);
   const [celular, setCelular] = useState(phone);
   const [phoneMessage, setPhoneMessage] = useState<string | null>(null);
   const [phoneOk, setPhoneOk] = useState(false);
@@ -36,6 +38,8 @@ export function ProfileForm({ firstName, lastName, email, phone }: Props) {
   const [passwordPending, startPassword] = useTransition();
 
   function openEdit() {
+    setNombre(firstName);
+    setApellido(lastName);
     setCelular(phone);
     setPhoneMessage(null);
     setChangingPassword(false);
@@ -43,6 +47,8 @@ export function ProfileForm({ firstName, lastName, email, phone }: Props) {
   }
 
   function closeEdit() {
+    setNombre(firstName);
+    setApellido(lastName);
     setCelular(phone);
     setPhoneMessage(null);
     setEditing(false);
@@ -67,7 +73,11 @@ export function ProfileForm({ firstName, lastName, email, phone }: Props) {
   function savePhone(event: FormEvent) {
     event.preventDefault();
     startPhone(async () => {
-      const result = await updateOwnPhoneAction(celular);
+      const result = await updateOwnProfileAction({
+        firstName: nombre,
+        lastName: apellido,
+        phone: celular,
+      });
       setPhoneOk(result.ok);
       setPhoneMessage(result.message);
       if (result.ok) {
@@ -204,11 +214,21 @@ export function ProfileForm({ firstName, lastName, email, phone }: Props) {
             <h2 className="module-form-title">Datos</h2>
             <div className="field">
               <label htmlFor="perfil-nombre">Nombre</label>
-              <input id="perfil-nombre" value={firstName} readOnly />
+              <input
+                id="perfil-nombre"
+                value={nombre}
+                maxLength={60}
+                onChange={(event) => setNombre(event.target.value)}
+              />
             </div>
             <div className="field">
               <label htmlFor="perfil-apellido">Apellido</label>
-              <input id="perfil-apellido" value={lastName} readOnly />
+              <input
+                id="perfil-apellido"
+                value={apellido}
+                maxLength={60}
+                onChange={(event) => setApellido(event.target.value)}
+              />
             </div>
             <div className="field">
               <label htmlFor="perfil-correo">Correo</label>
