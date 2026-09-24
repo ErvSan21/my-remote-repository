@@ -112,6 +112,20 @@ export default async function DashboardPage({ searchParams }: Props) {
           tone="orange"
         />
         <MetricCard
+          icon="utilidad"
+          label="Utilidad"
+          value={formatBs(utilidad)}
+          hint={pendingPrice > 0 ? "Falta precio en compras" : hint}
+          tone="green"
+        />
+        <MetricCard
+          icon="stock"
+          label="Stock"
+          value={stock.toLocaleString("es-BO", { maximumFractionDigits: 0 })}
+          hint="Aves disponibles"
+          tone="blue"
+        />
+        <MetricCard
           icon="cobrar"
           label="Cuentas por cobrar"
           value={formatBs(porCobrar)}
@@ -124,20 +138,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           value={formatBs(porPagar)}
           hint={hint}
           tone="blue"
-        />
-        <MetricCard
-          icon="stock"
-          label="Stock"
-          value={stock.toLocaleString("es-BO", { maximumFractionDigits: 0 })}
-          hint="Aves disponibles"
-          tone="blue"
-        />
-        <MetricCard
-          icon="utilidad"
-          label="Utilidad"
-          value={formatBs(utilidad)}
-          hint={pendingPrice > 0 ? "Falta precio en compras" : hint}
-          tone="green"
         />
       </section>
 
