@@ -1,10 +1,10 @@
-type MetricIcon = "ventas" | "compras" | "cobrar" | "pagar";
+type MetricIcon = "ventas" | "compras" | "cobrar" | "pagar" | "stock" | "utilidad";
 
 type MetricCardProps = {
   label: string;
   value: string;
   hint?: string;
-  tone?: "orange" | "blue";
+  tone?: "orange" | "blue" | "green";
   icon: MetricIcon;
 };
 
@@ -23,6 +23,23 @@ function MetricGlyph({ icon }: { icon: MetricIcon }) {
         <path d="M6 7h15l-1.5 9h-12L5 4H2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx="9" cy="20" r="1.2" fill="currentColor" />
         <circle cx="18" cy="20" r="1.2" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (icon === "stock") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <path d="M12 3.5 20 7.5 12 11.5 4 7.5 12 3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M4 7.5V16.5L12 20.5L20 16.5V7.5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M12 11.5V20.5" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+  if (icon === "utilidad") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M12 7.5v9M9.2 9.6c.5-.9 5.1-.9 5.6.7.5 1.5-1.2 2-2.8 2.3s-3.3.5-2.7 1.7c.5.9 5.1.8 5.6 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }

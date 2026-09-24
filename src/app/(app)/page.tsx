@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listVentasAction } from "@/app/actions/consignments";
 import { listPurchasesAction } from "@/app/actions/purchases";
+import { getPolloDisponible } from "@/lib/inventory";
 import { DashRange } from "@/components/dash-range";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
@@ -30,9 +31,10 @@ export default async function DashboardPage({ searchParams }: Props) {
         ? "Del día elegido"
         : "Del periodo";
 
-  const [ventasRes, purchasesRes] = await Promise.all([
+  const [ventasRes, purchasesRes, stock] = await Promise.all([
     listVentasAction(),
     listPurchasesAction(),
+    getPolloDisponible(),
   ]);
   const loadError = ventasRes.error || purchasesRes.error;
 
@@ -59,6 +61,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     (sum, venta) => sum + Number(venta.pending_amount ?? 0),
     0,
   );
+  const utilidad = Math.round((ventasTotal - comprasTotal) * 100) / 100;
   const porPagar = compras.reduce((sum, purchase) => {
     const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
     return sum + (balance.pending_amount ?? 0);
@@ -121,6 +124,20 @@ export default async function DashboardPage({ searchParams }: Props) {
           value={formatBs(porPagar)}
           hint={hint}
           tone="blue"
+        />
+        <MetricCard
+          icon="stock"
+          label="Stock"
+          value={stock.toLocaleString("es-BO", { maximumFractionDigits: 0 })}
+          hint="Aves disponibles"
+          tone="blue"
+        />
+        <MetricCard
+          icon="utilidad"
+          label="Utilidad"
+          value={formatBs(utilidad)}
+          hint={pendingPrice > 0 ? "Falta precio en compras" : hint}
+          tone="green"
         />
       </section>
 
