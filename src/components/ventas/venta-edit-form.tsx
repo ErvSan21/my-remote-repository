@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { updateConsignmentAction } from "@/app/actions/consignments";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Client, VentaRow } from "@/lib/data-types";
-import { formatDateTimeLaPaz, formatVentaTitle } from "@/lib/format";
 
 type Props = {
   venta: VentaRow;
@@ -67,28 +66,20 @@ export function VentaEditForm({ venta, clients }: Props) {
   }
 
   return (
-    <div className="data-stack">
-      <header className="venta-detail-header">
-        <div className="venta-detail-title-row">
-          <Link
-            href={`/ventas/${venta.id}`}
-            className="btn-icon-back"
-            aria-label="Volver"
-            title="Volver"
-          >
-            <BackArrowIcon />
-          </Link>
-          <h2 className="module-title">{formatVentaTitle(venta.sale_number)}</h2>
-        </div>
-        <p className="data-card-meta">
-          {formatDateTimeLaPaz(venta.created_at)}
-        </p>
+    <div className="data-stack module-page">
+      <header className="module-hero">
+        <Link href={`/ventas/${venta.id}`} className="module-hero-back">
+          <BackArrowIcon />
+          Ventas
+        </Link>
       </header>
 
-      <form className="data-form" onSubmit={onSubmit}>
-        <h3 className="data-form-title">Editar venta</h3>
+      <form className="data-form module-form" onSubmit={onSubmit}>
+        <h3 className="data-form-title module-form-title">Editar venta</h3>
         <div className="field">
-          <label htmlFor="ve-edit-client">Cliente</label>
+          <label className="sr-only" htmlFor="ve-edit-client">
+            Cliente
+          </label>
           <select
             id="ve-edit-client"
             required
@@ -103,45 +94,52 @@ export function VentaEditForm({ venta, clients }: Props) {
             ))}
           </select>
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="ve-edit-qty">Cantidad</label>
-            <input
-              id="ve-edit-qty"
-              type="number"
-              value={venta.quantity_birds}
-              disabled
-              readOnly
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="ve-edit-price">Precio unit. (Bs)</label>
-            <input
-              id="ve-edit-price"
-              type="number"
-              min={0.01}
-              step="0.01"
-              required
-              value={unitPrice}
-              onChange={(e) => setUnitPrice(e.target.value)}
-              disabled={pending}
-            />
-          </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="ve-edit-qty">
+            Cantidad
+          </label>
+          <input
+            id="ve-edit-qty"
+            type="number"
+            value={venta.quantity_birds}
+            disabled
+            readOnly
+            aria-label="Cantidad"
+          />
         </div>
         <div className="field">
-          <label htmlFor="ve-edit-notes">Notas</label>
+          <label className="sr-only" htmlFor="ve-edit-price">
+            Precio unitario
+          </label>
+          <input
+            id="ve-edit-price"
+            type="number"
+            min={0.01}
+            step="0.01"
+            required
+            placeholder="Precio unitario"
+            value={unitPrice}
+            onChange={(e) => setUnitPrice(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="ve-edit-notes">
+            Notas
+          </label>
           <textarea
             id="ve-edit-notes"
             rows={2}
+            placeholder="Notas"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={pending}
           />
         </div>
-        <div className="form-actions form-actions-split">
+        <div className="module-form-actions">
           <Link
             href={`/ventas/${venta.id}`}
-            className={`btn-secondary btn-form${pending ? " is-disabled" : ""}`}
+            className={`btn-muted${pending ? " is-disabled" : ""}`}
             aria-disabled={pending || undefined}
             tabIndex={pending ? -1 : undefined}
             onClick={(e) => {
@@ -152,7 +150,7 @@ export function VentaEditForm({ venta, clients }: Props) {
           </Link>
           <button
             type="submit"
-            className="btn-primary btn-form"
+            className="btn-primary"
             disabled={!canSave}
           >
             {pending ? "Guardando…" : "Guardar"}

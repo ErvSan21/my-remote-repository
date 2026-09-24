@@ -124,32 +124,28 @@ export function CompraDetail({ purchase, canEdit }: Props) {
   }
 
   return (
-    <div className="data-stack">
-      <header className="venta-detail-header">
-        <div className="venta-detail-title-row">
-          <Link
-            href="/compras"
-            className="btn-icon-back"
-            aria-label="Volver"
-            title="Volver"
-          >
-            <BackArrowIcon />
-          </Link>
-          <h2 className="module-title">{title}</h2>
-          {canEdit ? (
-            <Link
-              href={`/compras/${purchase.id}/editar`}
-              className="btn-icon-edit"
-              aria-label="Editar compra"
-              title="Editar"
-            >
-              <PencilIcon />
-            </Link>
-          ) : null}
-        </div>
+    <div className="data-stack module-page">
+      <header className="module-hero">
+        <Link href="/compras" className="module-hero-back">
+          <BackArrowIcon />
+          Compras
+        </Link>
       </header>
 
       <section className="compra-info">
+        <div className="compra-info-head">
+          <p className="data-card-title">{title}</p>
+          {canEdit ? (
+            <Link
+              href={`/compras/${purchase.id}/editar`}
+              className="proveedor-icon-btn is-edit"
+              aria-label="Editar compra"
+              title="Editar"
+            >
+              <PencilIcon size={16} />
+            </Link>
+          ) : null}
+        </div>
         <div className="compra-info-top">
           <span
             className={

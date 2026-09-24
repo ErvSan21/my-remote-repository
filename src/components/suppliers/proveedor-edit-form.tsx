@@ -7,6 +7,7 @@ import { updateSupplierAction } from "@/app/actions/suppliers";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Supplier } from "@/lib/data-types";
 import { BOLIVIA_DEPARTMENTS } from "@/lib/format";
+import { phoneDigits } from "@/lib/validation";
 
 type Props = {
   supplier: Supplier;
@@ -15,13 +16,13 @@ type Props = {
 export function ProveedorEditForm({ supplier }: Props) {
   const router = useRouter();
   const [name, setName] = useState(supplier.name);
-  const [location, setLocation] = useState(supplier.location || "Santa Cruz");
-  const [phone, setPhone] = useState(supplier.phone ?? "");
+  const [location, setLocation] = useState(supplier.location ?? "");
+  const [phone, setPhone] = useState(phoneDigits(supplier.phone ?? ""));
   const [notes, setNotes] = useState(supplier.notes ?? "");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const canSave = name.trim().length > 0 && !pending;
+  const canSave = name.trim().length > 0 && location.trim().length > 0 && !pending;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,81 +44,88 @@ export function ProveedorEditForm({ supplier }: Props) {
   }
 
   return (
-    <div className="data-stack">
-      <header className="venta-detail-header">
-        <div className="venta-detail-title-row">
-          <Link
-            href={`/proveedores/${supplier.id}`}
-            className="btn-icon-back"
-            aria-label="Volver"
-            title="Volver"
-          >
-            <BackArrowIcon />
-          </Link>
-          <h2 className="module-title">{supplier.name}</h2>
-        </div>
+    <div className="data-stack module-page">
+      <header className="module-hero">
+        <Link href={`/proveedores/${supplier.id}`} className="module-hero-back">
+          <BackArrowIcon />
+          Proveedores
+        </Link>
       </header>
 
-      <form className="data-form" onSubmit={onSubmit}>
-        <h3 className="data-form-title">Editar proveedor</h3>
+      <form className="data-form module-form" onSubmit={onSubmit}>
+        <h3 className="data-form-title module-form-title">Editar proveedor</h3>
         <div className="field">
-          <label htmlFor="sup-edit-name">Nombre y apellido</label>
+          <label className="sr-only" htmlFor="sup-edit-name">
+            Nombre y apellido
+          </label>
           <input
             id="sup-edit-name"
             required
+            placeholder="Nombre y apellido"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={pending}
           />
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="sup-edit-loc">Departamento</label>
-            <select
-              id="sup-edit-loc"
-              required
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              disabled={pending}
-            >
-              {[
-                ...BOLIVIA_DEPARTMENTS,
-                ...(location &&
-                !(BOLIVIA_DEPARTMENTS as readonly string[]).includes(location)
-                  ? [location]
-                  : []),
-              ].map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="sup-edit-phone">Celular</label>
-            <input
-              id="sup-edit-phone"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              disabled={pending}
-            />
-          </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="sup-edit-loc">
+            Departamento
+          </label>
+          <select
+            id="sup-edit-loc"
+            required
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            disabled={pending}
+          >
+            <option value="" disabled>
+              Departamento
+            </option>
+            {[
+              ...BOLIVIA_DEPARTMENTS,
+              ...(location &&
+              !(BOLIVIA_DEPARTMENTS as readonly string[]).includes(location)
+                ? [location]
+                : []),
+            ].map((loc) => (
+              <option key={loc} value={loc}>
+                {loc}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field">
-          <label htmlFor="sup-edit-notes">Notas</label>
+          <label className="sr-only" htmlFor="sup-edit-phone">
+            Celular
+          </label>
+          <input
+            id="sup-edit-phone"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={8}
+            placeholder="Celular"
+            value={phone}
+            onChange={(e) => setPhone(phoneDigits(e.target.value))}
+            disabled={pending}
+          />
+        </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="sup-edit-notes">
+            Notas
+          </label>
           <textarea
             id="sup-edit-notes"
             rows={2}
+            placeholder="Notas"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={pending}
           />
         </div>
-        <div className="form-actions form-actions-split">
+        <div className="module-form-actions">
           <Link
             href={`/proveedores/${supplier.id}`}
-            className={`btn-secondary btn-form${pending ? " is-disabled" : ""}`}
+            className={`btn-muted${pending ? " is-disabled" : ""}`}
             aria-disabled={pending || undefined}
             tabIndex={pending ? -1 : undefined}
             onClick={(e) => {
@@ -126,11 +134,7 @@ export function ProveedorEditForm({ supplier }: Props) {
           >
             Cancelar
           </Link>
-          <button
-            type="submit"
-            className="btn-primary btn-form"
-            disabled={!canSave}
-          >
+          <button type="submit" className="btn-primary" disabled={!canSave}>
             {pending ? "Guardando…" : "Guardar"}
           </button>
         </div>

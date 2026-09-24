@@ -5,6 +5,8 @@ import { upsertClientAction } from "@/app/actions/clients";
 import type { Client } from "@/lib/data-types";
 import { CLIENT_ZONES } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
+import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
+import { phoneDigits } from "@/lib/validation";
 
 type Props = {
   clients: Client[];
@@ -14,7 +16,7 @@ type Props = {
 const emptyClient = {
   id: "" as string,
   name: "",
-  zone: "La Paz",
+  zone: "",
   phone: "",
   notes: "",
 };
@@ -30,6 +32,7 @@ export function ClientsManager({ clients, listError }: Props) {
   const [feedbackOk, setFeedbackOk] = useState(false);
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
+  const { shown, more } = useLoadMore(query);
 
   const activeClients = useMemo(
     () => clients.filter((c) => c.active),
@@ -76,9 +79,9 @@ export function ClientsManager({ clients, listError }: Props) {
       <PageHeader
         variant="hero"
         title="Clientes"
-        addLabel="Crear cliente"
-        addStyle="button"
+        addLabel="Nuevo cliente"
         showAdd={!showForm}
+        onBack={showForm ? resetForm : undefined}
         onAdd={() => {
           setForm(emptyClient);
           setShowForm(true);
@@ -89,70 +92,84 @@ export function ClientsManager({ clients, listError }: Props) {
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
-        <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
+        <form className="data-form module-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title module-form-title">
             {editing ? "Editar cliente" : "Nuevo cliente"}
           </h3>
           <div className="field">
-            <label htmlFor="cl-name">Nombre</label>
+            <label className="sr-only" htmlFor="cl-name">
+              Nombre y apellido
+            </label>
             <input
               id="cl-name"
               required
+              placeholder="Nombre y apellido"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               disabled={pending}
             />
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="cl-zone">Dirección / zona</label>
-              <select
-                id="cl-zone"
-                value={form.zone}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, zone: e.target.value }))
-                }
-                disabled={pending}
-              >
-                {[
-                  ...CLIENT_ZONES,
-                  ...(form.zone &&
-                  !(CLIENT_ZONES as readonly string[]).includes(form.zone)
-                    ? [form.zone]
-                    : []),
-                ].map((z) => (
-                  <option key={z} value={z}>
-                    {z}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="cl-phone">Celular</label>
-              <input
-                id="cl-phone"
-                value={form.phone}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, phone: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="cl-zone">
+              Dirección / zona
+            </label>
+            <select
+              id="cl-zone"
+              className={form.zone ? undefined : "is-placeholder"}
+              value={form.zone}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, zone: e.target.value }))
+              }
+              disabled={pending}
+            >
+              <option value="">Dirección / zona</option>
+              {[
+                ...CLIENT_ZONES,
+                ...(form.zone &&
+                !(CLIENT_ZONES as readonly string[]).includes(form.zone)
+                  ? [form.zone]
+                  : []),
+              ].map((z) => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field">
-            <label htmlFor="cl-notes">Notas</label>
+            <label className="sr-only" htmlFor="cl-phone">
+              Celular
+            </label>
+            <input
+              id="cl-phone"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={8}
+              placeholder="Celular"
+              value={form.phone}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, phone: phoneDigits(e.target.value) }))
+              }
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="cl-notes">
+              Notas
+            </label>
             <textarea
               id="cl-notes"
               rows={2}
+              placeholder="Notas"
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               disabled={pending}
             />
           </div>
-          <div className="form-actions form-actions-split">
+          <div className="module-form-actions">
             <button
               type="button"
-              className="btn-secondary btn-form"
+              className="btn-muted"
               onClick={resetForm}
               disabled={pending}
             >
@@ -160,10 +177,10 @@ export function ClientsManager({ clients, listError }: Props) {
             </button>
             <button
               type="submit"
-              className="btn-primary btn-form"
+              className="btn-primary"
               disabled={pending || !form.name.trim()}
             >
-              {pending ? "Guardando…" : "Guardar"}
+              {pending ? "Guardando…" : editing ? "Guardar" : "Crear"}
             </button>
           </div>
           {feedback ? (
@@ -194,25 +211,27 @@ export function ClientsManager({ clients, listError }: Props) {
           <input
             id="cl-search"
             type="search"
-            placeholder="Buscar por nombre, zona o celular…"
+            placeholder="Buscar por nombre apellido o celular"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
       ) : null}
 
+      {!showForm ? (
+      <>
       <ul className="data-list">
-        {visible.map((c) => (
+        {visible.slice(0, shown).map((c) => (
           <li key={c.id}>
             <button
               type="button"
-              className="data-card"
+              className="data-card provider-card-plain"
               onClick={() => {
                 setForm({
                   id: c.id,
                   name: c.name,
-                  zone: c.zone || "La Paz",
-                  phone: c.phone ?? "",
+                  zone: c.zone || "",
+                  phone: phoneDigits(c.phone ?? ""),
                   notes: c.notes ?? "",
                 });
                 setShowForm(true);
@@ -220,15 +239,9 @@ export function ClientsManager({ clients, listError }: Props) {
                 setFeedbackOk(false);
               }}
             >
-              <div className="data-card-top">
-                <div>
-                  <p className="data-card-title">{c.name}</p>
-                  <p className="data-card-meta">
-                    {c.zone || "Sin dirección"}
-                    {c.phone ? ` · ${c.phone}` : ""}
-                  </p>
-                </div>
-              </div>
+              <p className="data-card-title">{c.name}</p>
+              <p className="provider-dept">{c.zone || "Sin dirección"}</p>
+              <p className="data-card-meta">{c.phone || "Sin celular"}</p>
             </button>
           </li>
         ))}
@@ -237,7 +250,7 @@ export function ClientsManager({ clients, listError }: Props) {
             {activeClients.length === 0 ? (
               <>
                 <p className="data-empty-title">No hay clientes</p>
-                <p>Usa «Crear cliente» para agregar el primero.</p>
+                <p>Toca + para agregar el primero.</p>
               </>
             ) : (
               <>
@@ -248,6 +261,9 @@ export function ClientsManager({ clients, listError }: Props) {
           </li>
         ) : null}
       </ul>
+      <LoadMoreButton shown={shown} total={visible.length} onMore={more} />
+      </>
+      ) : null}
     </div>
   );
 }

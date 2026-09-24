@@ -47,6 +47,32 @@ export function parsePositiveInt(value: unknown, max = QTY_MAX): number | null {
   return qty;
 }
 
+/** Celular de Bolivia: solo dígitos, hasta 8. */
+export const PHONE_MAX_DIGITS = 8;
+
+export function phoneDigits(value: string, max = PHONE_MAX_DIGITS): string {
+  return value.replace(/\D/g, "").slice(0, max);
+}
+
+export function parsePhone(
+  value: unknown,
+  max = PHONE_MAX_DIGITS,
+): { ok: true; value: string } | { ok: false; message: string } {
+  if (value == null) return { ok: true, value: "" };
+  if (typeof value !== "string") {
+    return { ok: false, message: "El celular solo admite números." };
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: true, value: "" };
+  if (!/^\d+$/.test(trimmed)) {
+    return { ok: false, message: "El celular solo admite números." };
+  }
+  if (trimmed.length > max) {
+    return { ok: false, message: "El celular admite hasta 8 números." };
+  }
+  return { ok: true, value: trimmed };
+}
+
 export function boundedText(
   value: unknown,
   max = TEXT_MAX,

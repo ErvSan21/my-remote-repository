@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 
 type PageHeaderProps = {
   title: string;
@@ -13,6 +14,8 @@ type PageHeaderProps = {
   addStyle?: "plus" | "button";
   /** Navy hero banner matching MAC mockups. */
   variant?: "default" | "hero";
+  /** Replaces the title row with the navy back control. */
+  onBack?: () => void;
 };
 
 export function PageHeader({
@@ -22,70 +25,41 @@ export function PageHeader({
   addLabel = "Crear",
   showAdd = true,
   trailing,
-  onSearchToggle,
-  searchOpen = false,
   addStyle = "plus",
   variant = "default",
+  onBack,
 }: PageHeaderProps) {
   const showButton = showAdd && onAdd && addStyle === "button";
-  const showPlus = showAdd && onAdd && addStyle === "plus";
-  const showActions = showButton || showPlus || Boolean(onSearchToggle);
+  const showPlus = showAdd && onAdd && (addStyle === "plus" || variant === "hero");
 
   if (variant === "hero") {
     return (
       <header className="module-hero">
-        <div className="module-hero-top">
-          <h1 className="module-hero-title">{title}</h1>
-          {trailing}
-        </div>
-        {subtitle ? <p className="module-hero-sub">{subtitle}</p> : null}
-        {showActions ? (
-        <div className="module-hero-actions">
-          {showButton ? (
-            <button
-              type="button"
-              className="btn-primary module-hero-cta"
-              onClick={onAdd}
-            >
-              {addLabel}
-            </button>
-          ) : null}
-          {showPlus ? (
-            <button
-              type="button"
-              className="btn-plus"
-              aria-label={addLabel}
-              title={addLabel}
-              onClick={onAdd}
-            >
-              +
-            </button>
-          ) : null}
-          {onSearchToggle ? (
-            <button
-              type="button"
-              className={`module-hero-search${searchOpen ? " is-active" : ""}`}
-              aria-label={searchOpen ? "Ocultar búsqueda" : "Buscar"}
-              aria-expanded={searchOpen}
-              aria-controls="list-filters"
-              onClick={onSearchToggle}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden
-              >
-                <circle cx="11" cy="11" r="7" />
-                <path d="m20 20-3.5-3.5" />
-              </svg>
-            </button>
-          ) : null}
-        </div>
-        ) : null}
+        {onBack ? (
+          <button type="button" className="module-hero-back" onClick={onBack}>
+            <BackArrowIcon />
+            {title}
+          </button>
+        ) : (
+          <>
+            <div className="module-hero-top">
+              <h1 className="module-hero-title">{title}</h1>
+              {trailing}
+              {showPlus ? (
+                <button
+                  type="button"
+                  className="btn-plus is-round"
+                  aria-label={addLabel}
+                  title={addLabel}
+                  onClick={onAdd}
+                >
+                  +
+                </button>
+              ) : null}
+            </div>
+            {subtitle ? <p className="module-hero-sub">{subtitle}</p> : null}
+          </>
+        )}
       </header>
     );
   }

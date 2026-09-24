@@ -7,6 +7,7 @@ import type { Purchase, Supplier } from "@/lib/data-types";
 import { formatBs } from "@/lib/format";
 import { purchaseBalance } from "@/lib/debts";
 import { PageHeader } from "@/components/ui/page-header";
+import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
@@ -54,9 +55,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}`);
 
   const supplierPhoneById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -134,9 +135,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
       <PageHeader
         variant="hero"
         title="Compras"
-        addLabel="Registrar Compra"
-        addStyle="button"
+        addLabel="Nueva compra"
         showAdd={!showForm}
+        onBack={showForm ? resetForm : undefined}
         onAdd={() => {
           setForm({
             ...emptyForm,
@@ -146,30 +147,17 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
           setShowForm(true);
           setFeedback(null);
         }}
-        searchOpen={showSearch}
-        onSearchToggle={
-          showForm
-            ? undefined
-            : () =>
-                setShowSearch((open) => {
-                  const next = !open;
-                  if (next) {
-                    requestAnimationFrame(() => {
-                      document.getElementById("pur-search")?.focus();
-                    });
-                  }
-                  return next;
-                })
-        }
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
-        <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Nueva compra</h3>
+        <form className="data-form module-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title module-form-title">Nueva compra</h3>
           <div className="field">
-            <label htmlFor="pur-supplier">Proveedor</label>
+            <label className="sr-only" htmlFor="pur-supplier">
+              Proveedor
+            </label>
             <select
               id="pur-supplier"
               required
@@ -189,44 +177,50 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
               ))}
             </select>
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="pur-date">Fecha</label>
-              <input
-                id="pur-date"
-                type="date"
-                required
-                value={form.purchase_date}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, purchase_date: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pur-qty">Cantidad</label>
-              <input
-                id="pur-qty"
-                type="number"
-                min={1}
-                step={1}
-                required
-                value={form.quantity_birds}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, quantity_birds: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="pur-date">
+              Fecha
+            </label>
+            <input
+              id="pur-date"
+              type="date"
+              required
+              aria-label="Fecha"
+              value={form.purchase_date}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, purchase_date: e.target.value }))
+              }
+              disabled={pending}
+            />
           </div>
           <div className="field">
-            <label htmlFor="pur-price">Precio unitario (Bs) — opcional</label>
+            <label className="sr-only" htmlFor="pur-qty">
+              Cantidad
+            </label>
+            <input
+              id="pur-qty"
+              type="number"
+              min={1}
+              step={1}
+              required
+              placeholder="Cantidad"
+              value={form.quantity_birds}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, quantity_birds: e.target.value }))
+              }
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="pur-price">
+              Precio unitario
+            </label>
             <input
               id="pur-price"
               type="number"
               min={0}
               step="0.01"
-              placeholder="Vacío = precio pendiente"
+              placeholder="Precio unitario"
               value={form.unit_price}
               onChange={(e) =>
                 setForm((f) => ({ ...f, unit_price: e.target.value }))
@@ -235,19 +229,22 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
             />
           </div>
           <div className="field">
-            <label htmlFor="pur-notes">Notas</label>
+            <label className="sr-only" htmlFor="pur-notes">
+              Notas
+            </label>
             <textarea
               id="pur-notes"
               rows={2}
+              placeholder="Notas"
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               disabled={pending}
             />
           </div>
-          <div className="form-actions form-actions-split">
+          <div className="module-form-actions">
             <button
               type="button"
-              className="btn-secondary btn-form"
+              className="btn-muted"
               onClick={resetForm}
               disabled={pending}
             >
@@ -255,10 +252,10 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
             </button>
             <button
               type="submit"
-              className="btn-primary btn-form"
+              className="btn-primary"
               disabled={!canSave}
             >
-              {pending ? "Guardando…" : "Guardar"}
+              {pending ? "Guardando…" : "Crear"}
             </button>
           </div>
           {feedback ? (
@@ -271,8 +268,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
 
       {!showForm ? (
         <>
-          {(showSearch || query || dateFrom || dateTo) && (
-            <div className="list-filters sheet-filters" id="list-filters">
+          <div className="list-filters sheet-filters" id="list-filters">
               <div className="search-bar">
                 <label htmlFor="pur-search" className="sr-only">
                   Buscar
@@ -280,7 +276,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                 <input
                   id="pur-search"
                   type="search"
-                  placeholder="Buscar por proveedor o celular…"
+                  placeholder="Buscar por nombre apellido o celular"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -323,58 +319,37 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                 </button>
               ) : null}
             </div>
-          )}
 
           <ul className="data-list">
-            {visible.map((p) => {
+            {visible.slice(0, shown).map((p) => {
               const balance = purchaseBalance(
                 p.total_amount,
                 p.paid_amount ?? 0,
               );
               return (
                 <li key={p.id}>
-                  <Link href={`/compras/${p.id}`} className="data-card compra-card">
-                    <div className="compra-card-row">
-                      <span className="compra-icon" aria-hidden>
-                        <svg
-                          width="18"
-                          height="18"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                        >
-                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                          <path d="M3.3 7 12 12l8.7-5" />
-                          <path d="M12 22V12" />
-                        </svg>
+                  <Link href={`/compras/${p.id}`} className="data-card proveedor-compra">
+                    <div>
+                      <p className="data-card-title">
+                        {p.suppliers?.name ?? "Proveedor"}
+                      </p>
+                      <p className="data-card-meta">{p.quantity_birds} Unidades</p>
+                    </div>
+                    <div className="proveedor-compra-side">
+                      <span
+                        className={
+                          balance.is_paid
+                            ? "compra-status-tag is-paid"
+                            : "compra-status-tag is-pending"
+                        }
+                      >
+                        {balance.is_paid ? "Pagado" : "Pendiente"}
                       </span>
-                      <div className="compra-card-body">
-                        <p className="data-card-title">
-                          {p.suppliers?.name ?? "Proveedor"}
-                        </p>
-                        <p className="compra-qty">
-                          {p.quantity_birds} pollos
-                        </p>
-                        {balance.has_price ? (
-                          <p className="compra-amount">
-                            {formatBs(balance.pending_amount)}
-                          </p>
-                        ) : (
-                          <p className="compra-define-price">Definir precio</p>
-                        )}
-                      </div>
-                      <div className="compra-card-right">
-                        <span
-                          className={
-                            balance.is_paid
-                              ? "compra-status-tag is-paid"
-                              : "compra-status-tag is-pending"
-                          }
-                        >
-                          {balance.is_paid ? "Pagado" : "Pendiente"}
-                        </span>
-                      </div>
+                      <p className="proveedor-compra-amount">
+                        {balance.has_price
+                          ? formatBs(balance.pending_amount)
+                          : "Definir precio"}
+                      </p>
                     </div>
                   </Link>
                 </li>
@@ -385,7 +360,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                 {purchases.length === 0 ? (
                   <>
                     <p className="data-empty-title">No hay compras</p>
-                    <p>Usa «Registrar Compra» para anotar la primera.</p>
+                    <p>Toca + para anotar la primera.</p>
                   </>
                 ) : (
                   <>
@@ -396,6 +371,7 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
               </li>
             ) : null}
           </ul>
+          <LoadMoreButton shown={shown} total={visible.length} onMore={more} />
         </>
       ) : null}
     </div>

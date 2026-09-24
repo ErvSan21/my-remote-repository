@@ -12,6 +12,7 @@ import {
 } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
@@ -57,9 +58,9 @@ export function VentasManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}`);
 
   const unitPriceNum = Number(form.unit_price);
   const hasValidPrice =
@@ -143,34 +144,21 @@ export function VentasManager({
       <PageHeader
         variant="hero"
         title="Ventas"
-        addLabel="Registrar Venta"
-        addStyle="button"
+        addLabel="Nueva venta"
         showAdd={canCreate && !showForm}
+        onBack={showForm ? resetForm : undefined}
         onAdd={openCreate}
-        searchOpen={showSearch}
-        onSearchToggle={
-          showForm
-            ? undefined
-            : () =>
-                setShowSearch((open) => {
-                  const next = !open;
-                  if (next) {
-                    requestAnimationFrame(() => {
-                      document.getElementById("ve-search")?.focus();
-                    });
-                  }
-                  return next;
-                })
-        }
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
-        <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">Nueva venta</h3>
+        <form className="data-form module-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title module-form-title">Nueva venta</h3>
           <div className="field">
-            <label htmlFor="ve-client">Cliente</label>
+            <label className="sr-only" htmlFor="ve-client">
+              Cliente
+            </label>
             <select
               id="ve-client"
               required
@@ -190,46 +178,53 @@ export function VentasManager({
               ))}
             </select>
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="ve-qty">Cantidad</label>
-              <input
-                id="ve-qty"
-                type="number"
-                min={1}
-                step={1}
-                required
-                value={form.quantity_birds}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    quantity_birds: e.target.value,
-                  }))
-                }
-                disabled={pending}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="ve-price">Precio unit. (Bs)</label>
-              <input
-                id="ve-price"
-                type="number"
-                min={0.01}
-                step="0.01"
-                required
-                value={form.unit_price}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, unit_price: e.target.value }))
-                }
-                disabled={pending}
-              />
-            </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="ve-qty">
+              Cantidad
+            </label>
+            <input
+              id="ve-qty"
+              type="number"
+              min={1}
+              step={1}
+              required
+              placeholder="Cantidad"
+              value={form.quantity_birds}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  quantity_birds: e.target.value,
+                }))
+              }
+              disabled={pending}
+            />
           </div>
           <div className="field">
-            <label htmlFor="ve-notes">Notas</label>
+            <label className="sr-only" htmlFor="ve-price">
+              Precio unitario
+            </label>
+            <input
+              id="ve-price"
+              type="number"
+              min={0.01}
+              step="0.01"
+              required
+              placeholder="Precio unitario"
+              value={form.unit_price}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, unit_price: e.target.value }))
+              }
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="ve-notes">
+              Notas
+            </label>
             <textarea
               id="ve-notes"
               rows={2}
+              placeholder="Notas"
               value={form.notes}
               onChange={(e) =>
                 setForm((f) => ({ ...f, notes: e.target.value }))
@@ -271,10 +266,10 @@ export function VentasManager({
               </select>
             ) : null}
           </div>
-          <div className="form-actions form-actions-split">
+          <div className="module-form-actions">
             <button
               type="button"
-              className="btn-secondary btn-form"
+              className="btn-muted"
               onClick={resetForm}
               disabled={pending}
             >
@@ -282,10 +277,10 @@ export function VentasManager({
             </button>
             <button
               type="submit"
-              className="btn-primary btn-form"
+              className="btn-primary"
               disabled={!canSubmitSale}
             >
-              {pending ? "Guardando…" : "Guardar"}
+              {pending ? "Guardando…" : "Crear"}
             </button>
           </div>
           {feedback ? (
@@ -300,8 +295,7 @@ export function VentasManager({
 
       {!showForm ? (
         <>
-          {(showSearch || query || dateFrom || dateTo) && (
-            <div className="list-filters sheet-filters" id="list-filters">
+          <div className="list-filters sheet-filters" id="list-filters">
               <div className="search-bar">
                 <label htmlFor="ve-search" className="sr-only">
                   Buscar
@@ -309,7 +303,7 @@ export function VentasManager({
                 <input
                   id="ve-search"
                   type="search"
-                  placeholder="Buscar por cliente o código…"
+                  placeholder="Buscar por nombre apellido o celular"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -352,10 +346,9 @@ export function VentasManager({
                 </button>
               ) : null}
             </div>
-          )}
 
           <ul className="data-list">
-            {visible.map((v) => {
+            {visible.slice(0, shown).map((v) => {
               const name = v.clients?.name ?? "Cliente";
               const statusKey = v.is_paid
                 ? "paid"
@@ -370,44 +363,33 @@ export function VentasManager({
                     : "Pendiente";
               return (
                 <li key={v.id}>
-                  <Link
-                    href={`/ventas/${v.id}`}
-                    className="data-card venta-card"
-                  >
-                    <div className="venta-card-row">
-                      <span className="venta-avatar" aria-hidden>
-                        <svg
-                          width="22"
-                          height="22"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.7"
-                        >
-                          <path d="M20 21a8 8 0 0 0-16 0" />
-                          <circle cx="12" cy="7" r="4" />
-                        </svg>
+                  <Link href={`/ventas/${v.id}`} className="data-card proveedor-compra">
+                    <div>
+                      <p className="data-card-title">{name}</p>
+                      <p className="data-card-meta">
+                        {v.quantity_birds} Unidades
+                      </p>
+                      <p className="data-card-meta">
+                        {formatWhenLaPaz(v.created_at)}
+                        {" · "}
+                        {formatVentaTitle(v.sale_number)}
+                      </p>
+                    </div>
+                    <div className="proveedor-compra-side">
+                      <span
+                        className={
+                          statusKey === "paid"
+                            ? "compra-status-tag is-paid"
+                            : statusKey === "partial"
+                              ? "compra-status-tag is-partial"
+                              : "compra-status-tag is-pending"
+                        }
+                      >
+                        {statusLabel}
                       </span>
-                      <div className="venta-card-body">
-                        <p className="data-card-title venta-card-client">
-                          {name}
-                        </p>
-                        <p className="data-card-meta">
-                          {formatWhenLaPaz(v.created_at)}
-                          {" · "}
-                          {formatVentaTitle(v.sale_number)}
-                        </p>
-                      </div>
-                      <div className="venta-card-right">
-                        <p className="venta-amount-plain">
-                          {formatBs(v.total_amount)}
-                        </p>
-                        <span
-                          className={`venta-status-pill status-${statusKey}`}
-                        >
-                          {statusLabel}
-                        </span>
-                      </div>
+                      <p className="proveedor-compra-amount">
+                        {formatBs(v.total_amount)}
+                      </p>
                     </div>
                   </Link>
                 </li>
@@ -418,7 +400,7 @@ export function VentasManager({
                 {ventas.length === 0 ? (
                   <>
                     <p className="data-empty-title">No hay ventas</p>
-                    <p>Usa «Registrar Venta» para anotar la primera.</p>
+                    <p>Toca + para anotar la primera.</p>
                   </>
                 ) : (
                   <>
@@ -429,6 +411,7 @@ export function VentasManager({
               </li>
             ) : null}
           </ul>
+          <LoadMoreButton shown={shown} total={visible.length} onMore={more} />
         </>
       ) : null}
     </div>

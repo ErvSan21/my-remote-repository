@@ -1109,6 +1109,27 @@ a {
   cursor: pointer;
 }
 
+.btn-load-more {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 2rem);
+  margin: 0.85rem 1rem 0;
+  min-height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-load-more:hover {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
 .btn-muted:disabled,
 .btn-muted.is-disabled {
   opacity: 0.6;

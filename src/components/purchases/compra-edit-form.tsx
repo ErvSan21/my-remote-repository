@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { updatePurchaseAction } from "@/app/actions/purchases";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import type { Purchase, Supplier } from "@/lib/data-types";
-import { formatDateLaPaz } from "@/lib/format";
 import { parsePositiveInt } from "@/lib/numbers";
 
 type Props = {
@@ -73,32 +72,20 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
   }
 
   return (
-    <div className="data-stack">
-      <header className="venta-detail-header">
-        <div className="venta-detail-title-row">
-          <Link
-            href={`/compras/${purchase.id}`}
-            className="btn-icon-back"
-            aria-label="Volver"
-            title="Volver"
-          >
-            <BackArrowIcon />
-          </Link>
-          <h2 className="module-title">
-            {purchase.suppliers?.name
-              ? `Compra · ${purchase.suppliers.name}`
-              : "Editar compra"}
-          </h2>
-        </div>
-        <p className="data-card-meta">
-          {formatDateLaPaz(purchase.created_at || purchase.purchase_date)}
-        </p>
+    <div className="data-stack module-page">
+      <header className="module-hero">
+        <Link href={`/compras/${purchase.id}`} className="module-hero-back">
+          <BackArrowIcon />
+          Compras
+        </Link>
       </header>
 
-      <form className="data-form" onSubmit={onSubmit}>
-        <h3 className="data-form-title">Editar compra</h3>
+      <form className="data-form module-form" onSubmit={onSubmit}>
+        <h3 className="data-form-title module-form-title">Editar compra</h3>
         <div className="field">
-          <label htmlFor="pur-edit-supplier">Proveedor</label>
+          <label className="sr-only" htmlFor="pur-edit-supplier">
+            Proveedor
+          </label>
           <select
             id="pur-edit-supplier"
             required
@@ -113,59 +100,67 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
             ))}
           </select>
         </div>
-        <div className="field-row">
-          <div className="field">
-            <label htmlFor="pur-edit-date">Fecha</label>
-            <input
-              id="pur-edit-date"
-              type="date"
-              required
-              value={purchaseDate}
-              onChange={(e) => setPurchaseDate(e.target.value)}
-              disabled={pending}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="pur-edit-qty">Cantidad</label>
-            <input
-              id="pur-edit-qty"
-              type="number"
-              min={1}
-              step={1}
-              required
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              disabled={pending}
-            />
-          </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="pur-edit-date">
+            Fecha
+          </label>
+          <input
+            id="pur-edit-date"
+            type="date"
+            required
+            value={purchaseDate}
+            onChange={(e) => setPurchaseDate(e.target.value)}
+            disabled={pending}
+          />
         </div>
         <div className="field">
-          <label htmlFor="pur-edit-price">Precio unitario (Bs)</label>
+          <label className="sr-only" htmlFor="pur-edit-qty">
+            Cantidad
+          </label>
+          <input
+            id="pur-edit-qty"
+            type="number"
+            min={1}
+            step={1}
+            required
+            placeholder="Cantidad"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            disabled={pending}
+          />
+        </div>
+        <div className="field">
+          <label className="sr-only" htmlFor="pur-edit-price">
+            Precio unitario
+          </label>
           <input
             id="pur-edit-price"
             type="number"
             min={0}
             step="0.01"
-            placeholder="Vacío = pendiente"
+            placeholder="Precio unitario"
             value={unitPrice}
             onChange={(e) => setUnitPrice(e.target.value)}
             disabled={pending}
           />
         </div>
         <div className="field">
-          <label htmlFor="pur-edit-notes">Notas</label>
+          <label className="sr-only" htmlFor="pur-edit-notes">
+            Notas
+          </label>
           <textarea
             id="pur-edit-notes"
             rows={2}
+            placeholder="Notas"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             disabled={pending}
           />
         </div>
-        <div className="form-actions form-actions-split">
+        <div className="module-form-actions">
           <Link
             href={`/compras/${purchase.id}`}
-            className={`btn-secondary btn-form${pending ? " is-disabled" : ""}`}
+            className={`btn-muted${pending ? " is-disabled" : ""}`}
             aria-disabled={pending || undefined}
             tabIndex={pending ? -1 : undefined}
             onClick={(e) => {
@@ -176,7 +171,7 @@ export function CompraEditForm({ purchase, suppliers }: Props) {
           </Link>
           <button
             type="submit"
-            className="btn-primary btn-form"
+            className="btn-primary"
             disabled={!canSave}
           >
             {pending ? "Guardando…" : "Guardar"}

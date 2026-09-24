@@ -14,6 +14,7 @@ import {
 } from "@/lib/format";
 import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
+import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 
 type Props = {
   suppliers: Supplier[];
@@ -46,6 +47,7 @@ export function SupplierPaymentsManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(editId);
+  const { shown, more } = useLoadMore("pagos");
 
   const openPurchases = useMemo(() => {
     const open = purchases.filter(
@@ -108,29 +110,30 @@ export function SupplierPaymentsManager({
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
-        title="Pagos proveedores"
-        addLabel="Registrar pago"
+        variant="hero"
+        title="Pagos"
+        addLabel="Nuevo pago"
         showAdd={!showForm}
+        onBack={showForm ? resetForm : undefined}
         onAdd={openCreate}
-        trailing={
-          <div className="debt-total compact">
-            <span>Deuda</span>
-            <strong>{formatBs(totalOwed)}</strong>
-          </div>
-        }
       />
+      {!showForm ? (
+        <p className="module-note">Deuda: {formatBs(totalOwed)}</p>
+      ) : null}
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
-        <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
-            {editing ? "Editar pago" : "Registrar pago"}
+        <form className="data-form module-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title module-form-title">
+            {editing ? "Editar pago" : "Nuevo pago"}
           </h3>
           <div className="field">
-            <label htmlFor="pay-supplier">Proveedor</label>
+            <label className="sr-only" htmlFor="pay-supplier">
+              Proveedor
+            </label>
             <select
               id="pay-supplier"
               required
@@ -149,7 +152,9 @@ export function SupplierPaymentsManager({
             </select>
           </div>
           <div className="field">
-            <label htmlFor="pay-purchase">Compra (opcional)</label>
+            <label className="sr-only" htmlFor="pay-purchase">
+              Compra
+            </label>
             <select
               id="pay-purchase"
               value={purchaseId}
@@ -164,22 +169,26 @@ export function SupplierPaymentsManager({
               ))}
             </select>
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="pay-amount">Monto (Bs)</label>
-              <input
-                id="pay-amount"
-                type="number"
-                min={0.01}
-                step="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pay-method">Método</label>
+          <div className="field">
+            <label className="sr-only" htmlFor="pay-amount">
+              Monto
+            </label>
+            <input
+              id="pay-amount"
+              type="number"
+              min={0.01}
+              step="0.01"
+              required
+              placeholder="Monto"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="pay-method">
+              Método
+            </label>
               <select
                 id="pay-method"
                 value={method}
@@ -188,43 +197,39 @@ export function SupplierPaymentsManager({
               >
                 <option value="cash">Efectivo</option>
                 <option value="qr">QR</option>
-              </select>
-            </div>
+            </select>
           </div>
           <div className="field">
-            <label htmlFor="pay-notes">Notas</label>
+            <label className="sr-only" htmlFor="pay-notes">
+              Notas
+            </label>
             <textarea
               id="pay-notes"
               rows={2}
+              placeholder="Notas"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               disabled={pending}
             />
           </div>
-          <div className="form-actions">
+          <div className="module-form-actions">
+            <button type="button" className="btn-muted" onClick={resetForm}>
+              Cancelar
+            </button>
             <button
               type="submit"
               className="btn-primary"
               disabled={pending || !supplierId}
             >
-              {pending
-                ? "Guardando…"
-                : editing
-                  ? "Guardar cambios"
-                  : "Registrar pago"}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={resetForm}
-            >
-              Cancelar
+              {pending ? "Guardando…" : editing ? "Guardar" : "Crear"}
             </button>
           </div>
           {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
 
+      {!showForm ? (
+      <>
       <section className="debt-grid" aria-label="Deuda por proveedor">
         {perSupplier
           .filter((r) => r.owed > 0)
@@ -237,7 +242,7 @@ export function SupplierPaymentsManager({
       </section>
 
       <ul className="data-list">
-        {recentPayments.map((p) => (
+        {recentPayments.slice(0, shown).map((p) => (
           <li key={p.id}>
             <button
               type="button"
@@ -254,7 +259,7 @@ export function SupplierPaymentsManager({
                     {PAYMENT_METHOD_LABEL[p.method] ?? p.method}
                   </p>
                 </div>
-                <p className="data-card-amount">{formatBs(p.amount)}</p>
+                <p className="proveedor-compra-amount">{formatBs(p.amount)}</p>
               </div>
             </button>
           </li>
@@ -263,6 +268,9 @@ export function SupplierPaymentsManager({
           <li className="data-empty">Aún no hay pagos.</li>
         ) : null}
       </ul>
+      <LoadMoreButton shown={shown} total={recentPayments.length} onMore={more} />
+      </>
+      ) : null}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 import type { PaymentMethod } from "@/lib/types";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
+import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 
 type Props = {
   clients: Client[];
@@ -51,6 +52,7 @@ export function ClientPaymentsManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(editId);
+  const { shown, more } = useLoadMore("cobros");
 
   const openForClient = useMemo(() => {
     const open = consignments.filter(
@@ -130,23 +132,27 @@ export function ClientPaymentsManager({
   }
 
   return (
-    <div className="data-stack">
+    <div className="data-stack module-page">
       <PageHeader
+        variant="hero"
         title="Cobros"
-        addLabel="Registrar cobro"
+        addLabel="Nuevo cobro"
         showAdd={!showForm}
+        onBack={showForm ? resetForm : undefined}
         onAdd={openCreate}
       />
 
       {listError ? <p className="module-note">{listError}</p> : null}
 
       {showForm ? (
-        <form className="data-form" onSubmit={onSubmit}>
-          <h3 className="data-form-title">
+        <form className="data-form module-form" onSubmit={onSubmit}>
+          <h3 className="data-form-title module-form-title">
             {editing ? "Editar cobro" : "Nuevo cobro"}
           </h3>
           <div className="field">
-            <label htmlFor="pay-client">Cliente</label>
+            <label className="sr-only" htmlFor="pay-client">
+              Cliente
+            </label>
             <select
               id="pay-client"
               required
@@ -168,7 +174,9 @@ export function ClientPaymentsManager({
             </select>
           </div>
           <div className="field">
-            <label htmlFor="pay-cons">Consignación (opcional)</label>
+            <label className="sr-only" htmlFor="pay-cons">
+              Consignación
+            </label>
             <select
               id="pay-cons"
               value={consignmentId}
@@ -184,22 +192,26 @@ export function ClientPaymentsManager({
               ))}
             </select>
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="pay-amt">Monto (Bs)</label>
-              <input
-                id="pay-amt"
-                type="number"
-                min={0.01}
-                step="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="pay-method">Método</label>
+          <div className="field">
+            <label className="sr-only" htmlFor="pay-amt">
+              Monto
+            </label>
+            <input
+              id="pay-amt"
+              type="number"
+              min={0.01}
+              step="0.01"
+              required
+              placeholder="Monto"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="pay-method">
+              Método
+            </label>
               <select
                 id="pay-method"
                 value={method}
@@ -209,45 +221,41 @@ export function ClientPaymentsManager({
                 <option value="cash">Efectivo</option>
                 <option value="qr">QR</option>
                 <option value="on_delivery">Al entregar</option>
-              </select>
-            </div>
+            </select>
           </div>
           <div className="field">
-            <label htmlFor="pay-notes">Notas</label>
+            <label className="sr-only" htmlFor="pay-notes">
+              Notas
+            </label>
             <textarea
               id="pay-notes"
               rows={2}
+              placeholder="Notas"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               disabled={pending}
             />
           </div>
-          <div className="form-actions">
+          <div className="module-form-actions">
+            <button type="button" className="btn-muted" onClick={resetForm}>
+              Cancelar
+            </button>
             <button
               type="submit"
               className="btn-primary"
               disabled={pending || !clientId}
             >
-              {pending
-                ? "Guardando…"
-                : editing
-                  ? "Guardar cambios"
-                  : "Cobrar"}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={resetForm}
-            >
-              Cancelar
+              {pending ? "Guardando…" : editing ? "Guardar" : "Crear"}
             </button>
           </div>
           {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
 
+      {!showForm ? (
+      <>
       <ul className="data-list">
-        {payments.map((p) => {
+        {payments.slice(0, shown).map((p) => {
           const rec = receiptFromPayment(p);
           return (
             <li key={p.id} className="data-card-wrap">
@@ -267,7 +275,7 @@ export function ClientPaymentsManager({
                       {rec ? ` · ${rec.code}` : ""}
                     </p>
                   </div>
-                  <p className="data-card-amount">{formatBs(p.amount)}</p>
+                  <p className="proveedor-compra-amount">{formatBs(p.amount)}</p>
                 </div>
               </button>
               {rec ? (
@@ -284,6 +292,9 @@ export function ClientPaymentsManager({
           <li className="data-empty">Aún no hay cobros.</li>
         ) : null}
       </ul>
+      <LoadMoreButton shown={shown} total={payments.length} onMore={more} />
+      </>
+      ) : null}
     </div>
   );
 }

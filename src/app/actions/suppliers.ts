@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { boundedText, isUuid } from "@/lib/validation";
+import { boundedText, isUuid, parsePhone } from "@/lib/validation";
 import type { ActionResult, Supplier } from "@/lib/data-types";
 
 function revalidateSuppliers(id?: string) {
@@ -63,10 +63,11 @@ export async function createSupplierAction(input: {
   await requireAdmin();
   const name = boundedText(input.name, 200);
   const location = boundedText(input.location, 120);
-  const phone = boundedText(input.phone, 40);
+  const phone = parsePhone(input.phone);
   const notes = boundedText(input.notes);
   if (!name.ok || !name.value) return { ok: false, message: "El nombre es obligatorio." };
-  if (!location.ok || !phone.ok || !notes.ok) {
+  if (!phone.ok) return { ok: false, message: phone.message };
+  if (!location.ok || !notes.ok) {
     return { ok: false, message: "Texto demasiado largo." };
   }
 
@@ -101,11 +102,12 @@ export async function updateSupplierAction(input: {
   await requireSuperadmin();
   const name = boundedText(input.name, 200);
   const location = boundedText(input.location, 120);
-  const phone = boundedText(input.phone, 40);
+  const phone = parsePhone(input.phone);
   const notes = boundedText(input.notes);
   if (!isUuid(input.id)) return { ok: false, message: "Proveedor inválido." };
   if (!name.ok || !name.value) return { ok: false, message: "El nombre es obligatorio." };
-  if (!location.ok || !phone.ok || !notes.ok) {
+  if (!phone.ok) return { ok: false, message: phone.message };
+  if (!location.ok || !notes.ok) {
     return { ok: false, message: "Texto demasiado largo." };
   }
 
@@ -147,6 +149,36 @@ export async function upsertSupplierAction(input: {
     });
   }
   return createSupplierAction(input);
+}
+
+export async function deleteSupplierAction(id: string): Promise<ActionResult> {
+  await requireSuperadmin();
+  if (!isUuid(id)) return { ok: false, message: "Proveedor inválido." };
+
+  const supabase = await createClient();
+  const [purchasesRes, paymentsRes] = await Promise.all([
+    supabase
+      .from("purchases")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", id),
+    supabase
+      .from("supplier_payments")
+      .select("id", { count: "exact", head: true })
+      .eq("supplier_id", id),
+  ]);
+  if (purchasesRes.error) return { ok: false, message: purchasesRes.error.message };
+  if (paymentsRes.error) return { ok: false, message: paymentsRes.error.message };
+  if ((purchasesRes.count ?? 0) > 0 || (paymentsRes.count ?? 0) > 0) {
+    return {
+      ok: false,
+      message: "Este proveedor tiene compras o pagos. No se puede eliminar.",
+    };
+  }
+
+  const { error } = await supabase.from("suppliers").delete().eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  revalidateSuppliers();
+  return { ok: true, message: "Proveedor eliminado." };
 }
 
 export async function setSupplierActiveAction(
