@@ -1,122 +1,159 @@
 import Link from "next/link";
+import { DashRange } from "@/components/dash-range";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
-import { getSupplierDebtsAction } from "@/app/actions/supplier-payments";
 import { createClient } from "@/lib/supabase/server";
 import { formatBs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-function dayBoundsLaPaz() {
-  const today = new Date().toLocaleDateString("en-CA", {
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+function todayLaPaz() {
+  return new Date().toLocaleDateString("en-CA", {
     timeZone: "America/La_Paz",
   });
-  return {
-    start: `${today}T00:00:00-04:00`,
-    end: `${today}T23:59:59-04:00`,
-    today,
-  };
 }
 
-export default async function DashboardPage() {
+function dayStart(date: string) {
+  return `${date}T00:00:00-04:00`;
+}
+
+function dayEnd(date: string) {
+  return `${date}T23:59:59-04:00`;
+}
+
+type Props = {
+  searchParams: Promise<{ from?: string; to?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: Props) {
   await requireAdmin();
+  const params = await searchParams;
+  const today = todayLaPaz();
+  const from = params.from && DATE_KEY.test(params.from) ? params.from : today;
+  const to = params.to && DATE_KEY.test(params.to) ? params.to : today;
+  const rangeInvalid = from > to;
+  const sameDay = from === to;
+  const hint = sameDay
+    ? from === today
+      ? "Del día"
+      : "Del día elegido"
+    : "Del periodo";
+
   const supabase = await createClient();
-  const { start, end, today } = dayBoundsLaPaz();
-
-  const [debts, ventasHoyRes, comprasHoyRes, consignmentsRes, paymentsRes] =
-    await Promise.all([
-      getSupplierDebtsAction(),
-      supabase
+  const ventasQuery = rangeInvalid
+    ? { data: [] as { id: string; total_amount: number | null }[] }
+    : await supabase
         .from("consignments")
-        .select("total_amount")
-        .gte("created_at", start)
-        .lte("created_at", end),
-      supabase
+        .select("id, total_amount")
+        .gte("created_at", dayStart(from))
+        .lte("created_at", dayEnd(to));
+  const comprasQuery = rangeInvalid
+    ? { data: [] as { id: string; total_amount: number | null; status: string | null }[] }
+    : await supabase
         .from("purchases")
-        .select("total_amount, purchase_date, created_at")
-        .gte("purchase_date", today)
-        .lte("purchase_date", today),
-      supabase
-        .from("consignments")
         .select("id, total_amount, status")
-        .in("status", ["open", "partial"]),
-      supabase
-        .from("client_payments")
-        .select("consignment_id, amount")
-        .not("consignment_id", "is", null),
-    ]);
+        .gte("purchase_date", from)
+        .lte("purchase_date", to);
 
-  const ventasHoy = (ventasHoyRes.data ?? []).reduce(
-    (s, r) => s + Number(r.total_amount ?? 0),
-    0,
-  );
-  const comprasHoy = (comprasHoyRes.data ?? []).reduce(
-    (s, r) => s + Number(r.total_amount ?? 0),
-    0,
-  );
+  const ventas = ventasQuery.data ?? [];
+  const compras = comprasQuery.data ?? [];
+  const ventaIds = ventas.map((row) => row.id as string);
+  const compraIds = compras.map((row) => row.id as string);
 
-  const paidByCons = new Map<string, number>();
-  for (const p of paymentsRes.data ?? []) {
-    const id = p.consignment_id as string;
-    paidByCons.set(id, (paidByCons.get(id) ?? 0) + Number(p.amount));
+  const [cobrosRes, pagosRes] = await Promise.all([
+    ventaIds.length
+      ? supabase
+          .from("client_payments")
+          .select("consignment_id, amount")
+          .in("consignment_id", ventaIds)
+      : Promise.resolve({ data: [] }),
+    compraIds.length
+      ? supabase
+          .from("supplier_payments")
+          .select("purchase_id, amount")
+          .in("purchase_id", compraIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const cobrado = new Map<string, number>();
+  for (const row of cobrosRes.data ?? []) {
+    const id = row.consignment_id as string;
+    cobrado.set(id, (cobrado.get(id) ?? 0) + Number(row.amount ?? 0));
   }
-  const porCobrar = (consignmentsRes.data ?? []).reduce((s, c) => {
-    const total = Number(c.total_amount ?? 0);
-    const paid = paidByCons.get(c.id as string) ?? 0;
-    return s + Math.max(0, total - paid);
-  }, 0);
+  const pagado = new Map<string, number>();
+  for (const row of pagosRes.data ?? []) {
+    const id = row.purchase_id as string | null;
+    if (!id) continue;
+    pagado.set(id, (pagado.get(id) ?? 0) + Number(row.amount ?? 0));
+  }
 
-  const porPagar = debts.error ? null : debts.totalOwed;
-  const pendingPrice = debts.purchases.filter(
-    (p) => p.status === "pending_price",
+  const ventasTotal = ventas.reduce(
+    (sum, row) => sum + Number(row.total_amount ?? 0),
+    0,
+  );
+  const comprasTotal = compras.reduce(
+    (sum, row) => sum + Number(row.total_amount ?? 0),
+    0,
+  );
+  const porCobrar = ventas.reduce((sum, row) => {
+    const total = Number(row.total_amount ?? 0);
+    const paid = cobrado.get(row.id as string) ?? 0;
+    return sum + Math.max(0, Math.round((total - paid) * 100) / 100);
+  }, 0);
+  const porPagar = compras.reduce((sum, row) => {
+    if (row.total_amount == null) return sum;
+    const total = Number(row.total_amount);
+    const paid = pagado.get(row.id as string) ?? 0;
+    return sum + Math.max(0, Math.round((total - paid) * 100) / 100);
+  }, 0);
+  const pendingPrice = compras.filter(
+    (row) => row.status === "pending_price" || row.total_amount == null,
   ).length;
 
   return (
     <div className="dash-page">
       <header className="module-hero module-hero-dash">
-        <h1 className="module-hero-title">Dashboard MAC</h1>
+        <h1 className="module-hero-title">Dashboard</h1>
       </header>
+
+      <DashRange from={from} to={to} />
+      {rangeInvalid ? (
+        <p className="form-feedback dash-range-note" role="alert">
+          La fecha de inicio es posterior a la de fin.
+        </p>
+      ) : null}
 
       <section className="metrics-grid" aria-label="Métricas">
         <MetricCard
-          label="Ventas Hoy"
-          value={formatBs(ventasHoy)}
-          hint="Registradas hoy"
+          icon="ventas"
+          label="Ventas"
+          value={formatBs(ventasTotal)}
+          hint={hint}
           tone="orange"
         />
         <MetricCard
-          label="Compras Hoy"
-          value={formatBs(comprasHoy)}
-          hint="Registradas hoy"
+          icon="compras"
+          label="Compras"
+          value={formatBs(comprasTotal)}
+          hint={hint}
           tone="orange"
         />
         <MetricCard
-          label="Cuentas por Cobrar"
+          icon="cobrar"
+          label="Cuentas por cobrar"
           value={formatBs(porCobrar)}
-          hint="Ventas abiertas"
+          hint={hint}
           tone="blue"
         />
         <MetricCard
-          label="Cuentas por Pagar"
-          value={porPagar == null ? "—" : formatBs(porPagar)}
-          hint="Deuda proveedores"
+          icon="pagar"
+          label="Cuentas por pagar"
+          value={formatBs(porPagar)}
+          hint={hint}
           tone="blue"
         />
-      </section>
-
-      <section className="dash-links" aria-label="Accesos rápidos">
-        <Link href="/ventas" className="dash-link-card">
-          Ventas
-        </Link>
-        <Link href="/compras" className="dash-link-card">
-          Compras
-        </Link>
-        <Link href="/clientes" className="dash-link-card">
-          Clientes
-        </Link>
-        <Link href="/proveedores" className="dash-link-card">
-          Proveedores
-        </Link>
       </section>
 
       {pendingPrice > 0 ? (

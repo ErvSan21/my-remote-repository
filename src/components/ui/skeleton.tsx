@@ -73,10 +73,17 @@ export function DashboardSkeleton() {
           style={{ width: "11rem" }}
         />
       </header>
+      <div className="dash-range">
+        <Skeleton className="skeleton-search" />
+        <Skeleton className="skeleton-search" />
+      </div>
       <section className="metrics-grid">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="metric">
-            <Skeleton className="skeleton-line short" />
+            <div className="metric-head">
+              <Skeleton className="skeleton-icon-btn" style={{ width: "1.85rem", height: "1.85rem" }} />
+              <Skeleton className="skeleton-line" />
+            </div>
             <Skeleton className="skeleton-title" />
           </div>
         ))}
