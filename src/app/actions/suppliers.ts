@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { readSuppliers } from "@/lib/reads";
 import { boundedText, isUuid, parsePhone } from "@/lib/validation";
 import type { ActionResult, Supplier } from "@/lib/data-types";
 
@@ -22,17 +23,7 @@ export async function listSuppliersAction(includeInactive = false): Promise<{
   error: string | null;
 }> {
   await requireAdmin();
-  const supabase = await createClient();
-  let query = supabase
-    .from("suppliers")
-    .select("id, name, location, phone, notes, active, created_at, updated_at")
-    .order("name", { ascending: true });
-
-  if (!includeInactive) {
-    query = query.eq("active", true);
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await readSuppliers(includeInactive);
   if (error) return { suppliers: [], error: error.message };
   return { suppliers: (data ?? []) as Supplier[], error: null };
 }

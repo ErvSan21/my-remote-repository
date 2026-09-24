@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import {
+  readPurchasesForList,
+  readSupplierPaymentAmounts,
+  readSuppliers,
+} from "@/lib/reads";
 import { tryRpc } from "@/lib/status-refresh";
 import { boundedText, isUuid, parseMoney } from "@/lib/validation";
 import {
@@ -36,14 +41,8 @@ export async function getSupplierDebtsAction(): Promise<{
 
   const [suppliersRes, purchasesRes, paymentsRes, allPaymentsRes] =
     await Promise.all([
-      supabase
-        .from("suppliers")
-        .select("id, name")
-        .eq("active", true)
-        .order("name"),
-      supabase
-        .from("purchases")
-        .select("id, supplier_id, total_amount, status"),
+      readSuppliers(false),
+      readPurchasesForList(),
       supabase
         .from("supplier_payments")
         .select(
@@ -51,9 +50,7 @@ export async function getSupplierDebtsAction(): Promise<{
         )
         .order("paid_at", { ascending: false })
         .limit(40),
-      supabase
-        .from("supplier_payments")
-        .select("supplier_id, purchase_id, amount"),
+      readSupplierPaymentAmounts(),
     ]);
 
   if (

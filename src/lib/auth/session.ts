@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
 import type { AppRole } from "@/lib/types";
@@ -16,7 +17,7 @@ export type AuthContext = {
   profile: Profile;
 };
 
-export async function getAuthContext(): Promise<AuthContext | null> {
+export const getAuthContext = cache(async function getAuthContext(): Promise<AuthContext | null> {
   if (!hasSupabasePublicEnv()) return null;
 
   const supabase = await createClient();
@@ -44,4 +45,4 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     user,
     profile: profile as Profile,
   };
-}
+});

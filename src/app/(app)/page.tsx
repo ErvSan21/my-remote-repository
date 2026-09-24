@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { listVentasAction } from "@/app/actions/consignments";
-import { listPurchasesAction } from "@/app/actions/purchases";
-import { getPolloDisponible } from "@/lib/inventory";
 import { DashRange } from "@/components/dash-range";
+import { loadDashboardSource } from "@/lib/dashboard-data";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
 import { dayKeyLaPaz, inDateRange, weekBoundsLaPaz } from "@/lib/dates";
@@ -36,21 +34,17 @@ export default async function DashboardPage({ searchParams }: Props) {
         ? "Del día elegido"
         : "Del periodo";
 
-  const [ventasRes, purchasesRes, stock] = await Promise.all([
-    listVentasAction(),
-    listPurchasesAction(),
-    getPolloDisponible(),
-  ]);
-  const loadError = ventasRes.error || purchasesRes.error;
+  const dash = await loadDashboardSource();
+  const loadError = dash.error;
 
   const ventas = rangeInvalid
     ? []
-    : ventasRes.ventas.filter((venta) =>
+    : dash.ventas.filter((venta) =>
         inDateRange(dayKeyLaPaz(venta.created_at), from, to),
       );
   const compras = rangeInvalid
     ? []
-    : purchasesRes.purchases.filter((purchase) =>
+    : dash.purchases.filter((purchase) =>
         inDateRange(dayKeyLaPaz(purchase.created_at || purchase.purchase_date), from, to),
       );
 
@@ -136,7 +130,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <MetricCard
           icon="stock"
           label="Stock"
-          value={stock.toLocaleString("es-BO", { maximumFractionDigits: 0 })}
+          value={dash.stock.toLocaleString("es-BO", { maximumFractionDigits: 0 })}
           hint="Aves disponibles"
           tone="blue"
         />

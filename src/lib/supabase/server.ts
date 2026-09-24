@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { requireSupabasePublicEnv } from "@/lib/env";
@@ -5,8 +6,9 @@ import { requireSupabasePublicEnv } from "@/lib/env";
 /**
  * Server Components / Route Handlers / Server Actions client.
  * Cookie getAll/setAll matches the official Supabase Next.js SSR snippet.
+ * cache() reuses one client per request so pages and actions share it.
  */
-export async function createClient() {
+export const createClient = cache(async function createClient() {
   const { url, key } = requireSupabasePublicEnv();
   const cookieStore = await cookies();
 
@@ -26,4 +28,4 @@ export async function createClient() {
       },
     },
   });
-}
+});

@@ -3,26 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
+import { PURCHASE_LIST_SELECT, readPurchasesForList, readSupplierPaymentAmounts } from "@/lib/reads";
 import { boundedText, isIsoDate, isUuid, parseMoney, parsePositiveInt } from "@/lib/validation";
 import { paidTowardPurchase, purchaseBalance, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
 import type { PurchaseStatus } from "@/lib/types";
 
-const PURCHASE_SELECT =
-  "id, supplier_id, purchase_date, quantity_birds, unit_price, total_amount, status, notes, created_by, created_at, suppliers(name, phone)";
+const PURCHASE_SELECT = PURCHASE_LIST_SELECT;
 
 export async function listPurchasesAction(): Promise<{
   purchases: Purchase[];
   error: string | null;
 }> {
   await requireAdmin();
-  const supabase = await createClient();
   const [purchasesRes, paymentsRes] = await Promise.all([
-    supabase
-      .from("purchases")
-      .select(PURCHASE_SELECT)
-      .order("created_at", { ascending: false }),
-    supabase.from("supplier_payments").select("purchase_id, amount"),
+    readPurchasesForList(),
+    readSupplierPaymentAmounts(),
   ]);
 
   if (purchasesRes.error) {
