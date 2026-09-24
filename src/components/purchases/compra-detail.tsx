@@ -20,6 +20,7 @@ import type { PaymentMethod } from "@/lib/types";
 type Props = {
   purchase: Purchase;
   canEdit: boolean;
+  canDelete: boolean;
 };
 
 function personEmail(person?: ProfileRef | null) {
@@ -49,7 +50,7 @@ function TrashIcon() {
   );
 }
 
-export function CompraDetail({ purchase, canEdit }: Props) {
+export function CompraDetail({ purchase, canEdit, canDelete }: Props) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
@@ -196,7 +197,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
               <PencilIcon />
             </Link>
           ) : null}
-          {canEdit ? (
+          {canDelete ? (
             <button
               type="button"
               className="btn-icon-delete"

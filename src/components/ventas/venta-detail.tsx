@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
+import { deleteConsignmentAction } from "@/app/actions/consignments";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
 import type { ProfileRef, VentaPayment, VentaRow } from "@/lib/data-types";
@@ -19,7 +20,22 @@ import type { PaymentMethod } from "@/lib/types";
 type Props = {
   venta: VentaRow;
   canEdit: boolean;
+  canDelete: boolean;
 };
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 .9h8a1 1 0 0 0 1-.9l1-13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function personEmail(p?: ProfileRef | null) {
   return p?.email || p?.username || p?.full_name || "—";
@@ -35,15 +51,17 @@ function moneyInput(value: string) {
   return `${whole}.${decimals}`;
 }
 
-export function VentaDetail({ venta, canEdit }: Props) {
+export function VentaDetail({ venta, canEdit, canDelete }: Props) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [addedPayments, setAddedPayments] = useState<VentaPayment[]>([]);
   const payRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDialogElement>(null);
+  const deleteRef = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
 
   const paymentsChrono = useMemo(() => {
@@ -90,6 +108,29 @@ export function VentaDetail({ venta, canEdit }: Props) {
 
   function closePay() {
     payRef.current?.close();
+  }
+
+  function openDelete() {
+    setDeleteFeedback(null);
+    if (deleteRef.current && !deleteRef.current.open) deleteRef.current.showModal();
+  }
+
+  function closeDelete() {
+    deleteRef.current?.close();
+  }
+
+  function onDelete() {
+    setDeleteFeedback(null);
+    startTransition(async () => {
+      const result = await deleteConsignmentAction(venta.id);
+      if (!result.ok) {
+        setDeleteFeedback(result.message);
+        return;
+      }
+      deleteRef.current?.close();
+      router.push("/ventas");
+      router.refresh();
+    });
   }
 
   function onPagar(e: FormEvent) {
@@ -151,6 +192,18 @@ export function VentaDetail({ venta, canEdit }: Props) {
             >
               <PencilIcon />
             </Link>
+          ) : null}
+          {canDelete ? (
+            <button
+              type="button"
+              className="btn-icon-delete"
+              aria-label="Eliminar venta"
+              title="Eliminar"
+              onClick={openDelete}
+              disabled={pending}
+            >
+              <TrashIcon />
+            </button>
           ) : null}
         </div>
         <p className="data-card-meta">
@@ -302,6 +355,47 @@ export function VentaDetail({ venta, canEdit }: Props) {
             </p>
           ) : null}
         </form>
+      </dialog>
+
+      <dialog
+        ref={deleteRef}
+        className="pay-dialog"
+        aria-labelledby="delete-venta-title"
+        onClick={(event) => {
+          if (event.target === deleteRef.current) closeDelete();
+        }}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="delete-venta-title" className="data-form-title">
+            Eliminar venta
+          </h3>
+          <p className="data-card-meta">
+            Se borrará esta venta y sus cobros. Las aves vuelven al stock.
+          </p>
+          <div className="form-actions form-actions-split">
+            <button
+              type="button"
+              className="btn-secondary btn-form"
+              onClick={closeDelete}
+              disabled={pending}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn-danger btn-form"
+              onClick={onDelete}
+              disabled={pending}
+            >
+              {pending ? "Eliminando…" : "Eliminar"}
+            </button>
+          </div>
+          {deleteFeedback ? (
+            <p className="form-feedback" role="alert">
+              {deleteFeedback}
+            </p>
+          ) : null}
+        </div>
       </dialog>
     </div>
   );

@@ -6,6 +6,8 @@ export type DashboardSale = {
   total_amount: number | null;
   quantity_birds: number;
   pending_amount: number;
+  cash_amount: number;
+  qr_amount: number;
 };
 
 export type DashboardPurchase = {
@@ -34,7 +36,7 @@ export async function loadDashboardSource(): Promise<{
         .select("id, total_amount, quantity_birds, created_at"),
       supabase
         .from("client_payments")
-        .select("consignment_id, amount")
+        .select("consignment_id, amount, method")
         .not("consignment_id", "is", null),
       supabase
         .from("purchases")
@@ -59,6 +61,16 @@ export async function loadDashboardSource(): Promise<{
     (row) => row.consignment_id,
     (row) => row.amount,
   );
+  const cashBySale = sumBy(
+    (ventaPaysRes.data ?? []).filter((row) => row.method === "cash"),
+    (row) => row.consignment_id,
+    (row) => row.amount,
+  );
+  const qrBySale = sumBy(
+    (ventaPaysRes.data ?? []).filter((row) => row.method === "qr"),
+    (row) => row.consignment_id,
+    (row) => row.amount,
+  );
   const paidByPurchase = sumBy(
     compraPaysRes.data ?? [],
     (row) => row.purchase_id,
@@ -73,6 +85,8 @@ export async function loadDashboardSource(): Promise<{
       total_amount: total,
       quantity_birds: Number(row.quantity_birds ?? 0),
       pending_amount: balance.pending_amount,
+      cash_amount: cashBySale.get(row.id) ?? 0,
+      qr_amount: qrBySale.get(row.id) ?? 0,
     };
   });
 

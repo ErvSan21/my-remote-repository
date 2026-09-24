@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isAdminRole, requireAdmin, requireAuth, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { removeStockForConsignment } from "@/lib/inventory";
+import { removeStockForConsignment, restoreStockForDeletedConsignment } from "@/lib/inventory";
 import { tryRpc } from "@/lib/status-refresh";
 import {
   boundedText,
@@ -530,4 +530,32 @@ export async function updateConsignmentAction(input: {
   if (error) return { ok: false, message: error.message };
   revalidateVentas(input.id);
   return { ok: true, message: "Venta actualizada." };
+}
+
+export async function deleteConsignmentAction(id: string): Promise<ActionResult> {
+  const auth = await requireSuperadmin();
+  if (!isUuid(id)) return { ok: false, message: "Venta inválida." };
+
+  const supabase = await createClient();
+  const { data: venta, error } = await supabase
+    .from("consignments")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !venta) return { ok: false, message: "Venta no encontrada." };
+
+  const stock = await restoreStockForDeletedConsignment(id, auth.user.id);
+  if (!stock.ok) return { ok: false, message: stock.message };
+
+  const { error: payError } = await supabase
+    .from("client_payments")
+    .delete()
+    .eq("consignment_id", id);
+  if (payError) return { ok: false, message: payError.message };
+
+  const { error: delError } = await supabase.from("consignments").delete().eq("id", id);
+  if (delError) return { ok: false, message: delError.message };
+
+  revalidateVentas(id);
+  return { ok: true, message: "Venta eliminada." };
 }

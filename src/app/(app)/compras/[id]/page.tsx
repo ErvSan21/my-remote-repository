@@ -17,6 +17,7 @@ export default async function CompraDetailPage({ params }: Props) {
     <CompraDetail
       purchase={purchase}
       canEdit={isSuperadminRole(auth.profile.role)}
+      canDelete={isSuperadminRole(auth.profile.role)}
     />
   );
 }

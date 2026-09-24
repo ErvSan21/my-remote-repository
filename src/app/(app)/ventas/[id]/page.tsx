@@ -17,6 +17,7 @@ export default async function VentaDetailPage({ params }: Props) {
     <VentaDetail
       venta={venta}
       canEdit={isSuperadminRole(auth.profile.role)}
+      canDelete={isSuperadminRole(auth.profile.role)}
     />
   );
 }

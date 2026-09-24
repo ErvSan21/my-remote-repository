@@ -4,6 +4,7 @@ type MetricCardProps = {
   label: string;
   value: string;
   detail?: string;
+  breakdown?: { label: string; value: string }[];
   hint?: string;
   tone?: "orange" | "blue" | "green";
   icon: MetricIcon;
@@ -64,6 +65,7 @@ export function MetricCard({
   label,
   value,
   detail,
+  breakdown,
   hint,
   tone = "blue",
   icon,
@@ -77,6 +79,15 @@ export function MetricCard({
         <p className="metric-label">{label}</p>
       </div>
       <p className="metric-value">{value}</p>
+      {breakdown && breakdown.length > 0 ? (
+        <div className="metric-split">
+          {breakdown.map((line) => (
+            <p key={line.label}>
+              {line.label} <strong>{line.value}</strong>
+            </p>
+          ))}
+        </div>
+      ) : null}
       {detail ? <p className="metric-detail">{detail}</p> : null}
       {hint ? <p className="metric-hint">{hint}</p> : null}
     </article>

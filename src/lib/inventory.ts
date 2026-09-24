@@ -164,6 +164,50 @@ export async function removeStockForDeletedPurchase(
   return { ok: true as const };
 }
 
+/** Devuelve al stock las aves que salieron con una venta que se elimina. */
+export async function restoreStockForDeletedConsignment(
+  consignmentId: string,
+  userId: string,
+) {
+  if (!(await requireStockActor(userId))) {
+    return { ok: false as const, message: "No autorizado." };
+  }
+  const supabase = await createClient();
+  const { data: movements, error } = await supabase
+    .from("inventory_movements")
+    .select("id, lot_id, delta_birds")
+    .eq("ref_consignment_id", consignmentId);
+
+  if (error) return { ok: false as const, message: error.message };
+
+  for (const movement of movements ?? []) {
+    if (!movement.lot_id) continue;
+    const back = Math.abs(Number(movement.delta_birds ?? 0));
+    if (back <= 0) continue;
+    const { data: lot, error: lotError } = await supabase
+      .from("inventory_lots")
+      .select("id, quantity_birds")
+      .eq("id", movement.lot_id)
+      .maybeSingle();
+    if (lotError) return { ok: false as const, message: lotError.message };
+    if (!lot) continue;
+    const nextQty = Number(lot.quantity_birds) + back;
+    const { error: updError } = await supabase
+      .from("inventory_lots")
+      .update({ quantity_birds: nextQty, closed_at: null })
+      .eq("id", lot.id);
+    if (updError) return { ok: false as const, message: updError.message };
+  }
+
+  const { error: movError } = await supabase
+    .from("inventory_movements")
+    .delete()
+    .eq("ref_consignment_id", consignmentId);
+  if (movError) return { ok: false as const, message: movError.message };
+
+  return { ok: true as const };
+}
+
 /** Sale stock por consignación (FIFO sobre lotes abiertos). */
 export async function removeStockForConsignment(
   consignmentId: string,

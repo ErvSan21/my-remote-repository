@@ -77,6 +77,14 @@ export function DashboardBoard({
     (sum, venta) => sum + Number(venta.quantity_birds ?? 0),
     0,
   );
+  const ventasCash = ventasInRange.reduce(
+    (sum, venta) => sum + Number(venta.cash_amount ?? 0),
+    0,
+  );
+  const ventasQr = ventasInRange.reduce(
+    (sum, venta) => sum + Number(venta.qr_amount ?? 0),
+    0,
+  );
   const comprasQty = comprasInRange.reduce(
     (sum, purchase) => sum + Number(purchase.quantity_birds ?? 0),
     0,
@@ -131,6 +139,10 @@ export function DashboardBoard({
           icon="ventas"
           label="Ventas"
           value={formatBs(ventasTotal)}
+          breakdown={[
+            { label: "Efectivo", value: formatBs(ventasCash) },
+            { label: "QR", value: formatBs(ventasQr) },
+          ]}
           detail={formatCount(ventasQty, "vendidas")}
           hint={hint}
           tone="orange"

@@ -584,6 +584,26 @@ a {
   overflow-wrap: anywhere;
 }
 
+.metric-split {
+  margin: 0.35rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.metric-split p {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--ink-soft);
+}
+
+.metric-split strong {
+  font-weight: 750;
+  color: var(--ink);
+}
+
 .metric-detail {
   margin: 0.15rem 0 0;
   font-size: 0.72rem;
