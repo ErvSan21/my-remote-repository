@@ -50,7 +50,6 @@ export function ClientPaymentsManager({
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [notes, setNotes] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
-  const [receiptId, setReceiptId] = useState<string | null>(null);
   const noticeRef = useRef<HTMLDialogElement>(null);
   const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
@@ -91,20 +90,10 @@ export function ClientPaymentsManager({
     noticeRef.current?.close();
   }
 
-  function openReceipt() {
-    const id = receiptId;
-    savedRef.current = false;
-    noticeRef.current?.close();
-    if (!id) return;
-    router.push(`/recibos/${id}`);
-    router.refresh();
-  }
-
   function openCreate() {
     resetForm();
     setShowForm(true);
     setNotice(null);
-    setReceiptId(null);
   }
 
   function openEdit(p: ClientPayment) {
@@ -116,7 +105,6 @@ export function ClientPaymentsManager({
     setNotes(p.notes ?? "");
     setShowForm(true);
     setNotice(null);
-    setReceiptId(null);
   }
 
   function onSubmit(e: FormEvent) {
@@ -133,13 +121,11 @@ export function ClientPaymentsManager({
         });
         if (!result.ok) {
           savedRef.current = false;
-          setReceiptId(null);
           setNotice(result.message);
           return;
         }
         resetForm();
         savedRef.current = true;
-        setReceiptId(null);
         setNotice(result.message);
         return;
       }
@@ -153,13 +139,11 @@ export function ClientPaymentsManager({
       });
       if (!result.ok) {
         savedRef.current = false;
-        setReceiptId(null);
         setNotice(result.message);
         return;
       }
       resetForm();
       savedRef.current = true;
-      setReceiptId(result.receiptId ?? null);
       setNotice(result.message);
     });
   }
@@ -301,11 +285,6 @@ export function ClientPaymentsManager({
           </h3>
           <p className="data-card-meta">{notice}</p>
           <div className="module-form-actions">
-            {receiptId ? (
-              <button type="button" className="btn-muted" onClick={openReceipt}>
-                Ver recibo
-              </button>
-            ) : null}
             <button type="button" className="btn-primary" onClick={closeNotice}>
               Listo
             </button>

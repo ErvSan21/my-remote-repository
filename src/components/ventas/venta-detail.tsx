@@ -36,7 +36,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [receiptId, setReceiptId] = useState<string | null>(null);
   const noticeRef = useRef<HTMLDialogElement>(null);
   const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
@@ -67,15 +66,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
     noticeRef.current?.close();
   }
 
-  function openReceipt() {
-    const id = receiptId;
-    savedRef.current = false;
-    noticeRef.current?.close();
-    if (!id) return;
-    router.push(`/recibos/${id}`);
-    router.refresh();
-  }
-
   function onPagar(e: FormEvent) {
     e.preventDefault();
     if (!canPay) {
@@ -97,7 +87,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
       setFeedback(null);
       setShowPagar(false);
       savedRef.current = true;
-      setReceiptId(result.receiptId ?? null);
       setNotice(result.message);
     });
   }
@@ -196,10 +185,10 @@ export function VentaDetail({ venta, canEdit }: Props) {
         aria-labelledby="venta-cobro-notice-title"
         onClose={() => {
           setNotice(null);
-          if (savedRef.current) {
-            savedRef.current = false;
-            router.refresh();
-          }
+          if (!savedRef.current) return;
+          savedRef.current = false;
+          router.push("/ventas");
+          router.refresh();
         }}
       >
         <div className="pay-dialog-form">
@@ -208,11 +197,6 @@ export function VentaDetail({ venta, canEdit }: Props) {
           </h3>
           <p className="data-card-meta">{notice}</p>
           <div className="module-form-actions">
-            {receiptId ? (
-              <button type="button" className="btn-muted" onClick={openReceipt}>
-                Ver recibo
-              </button>
-            ) : null}
             <button type="button" className="btn-primary" onClick={closeNotice}>
               Listo
             </button>
