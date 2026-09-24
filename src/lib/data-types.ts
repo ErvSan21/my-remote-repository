@@ -14,6 +14,15 @@ export type Supplier = {
   updated_at: string;
 };
 
+export type PurchasePayment = {
+  id: string;
+  amount: number;
+  method: import("@/lib/types").PaymentMethod;
+  paid_at: string;
+  recorded_by: string | null;
+  recorder?: ProfileRef | null;
+};
+
 export type Purchase = {
   id: string;
   supplier_id: string;
@@ -27,8 +36,9 @@ export type Purchase = {
   created_at: string;
   /** Suma de pagos ligados a esta compra. */
   paid_amount?: number;
+  payments?: PurchasePayment[];
   creator?: ProfileRef | null;
-  suppliers?: { name: string; phone: string | null } | null;
+  suppliers?: { name: string; phone: string | null; location?: string | null } | null;
 };
 
 export type SupplierPayment = {

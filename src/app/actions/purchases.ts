@@ -3,14 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
-import { PURCHASE_LIST_SELECT, readPurchasesForList, readSupplierPaymentAmounts } from "@/lib/reads";
+import { readPurchasesForList, readSupplierPaymentAmounts } from "@/lib/reads";
 import { todayLaPaz } from "@/lib/dates";
 import { boundedText, isIsoDate, isUuid, parseMoney, parsePositiveInt } from "@/lib/validation";
 import { paidTowardPurchase, purchaseBalance, statusAfterPayment } from "@/lib/debts";
 import type { ActionResult, Purchase } from "@/lib/data-types";
-import type { PurchaseStatus } from "@/lib/types";
-
-const PURCHASE_SELECT = PURCHASE_LIST_SELECT;
+import type { PaymentMethod, PurchaseStatus } from "@/lib/types";
 
 export async function listPurchasesAction(): Promise<{
   purchases: Purchase[];
@@ -45,19 +43,40 @@ export async function getPurchaseAction(id: string): Promise<{
   if (!isUuid(id)) return { purchase: null, error: "Compra no encontrada." };
   const supabase = await createClient();
   const [purchaseRes, paymentsRes] = await Promise.all([
-    supabase.from("purchases").select(PURCHASE_SELECT).eq("id", id).maybeSingle(),
+    supabase
+      .from("purchases")
+      .select(
+        "id, supplier_id, purchase_date, quantity_birds, unit_price, total_amount, status, notes, created_by, created_at, suppliers(name, phone, location)",
+      )
+      .eq("id", id)
+      .maybeSingle(),
     supabase
       .from("supplier_payments")
-      .select("purchase_id, amount")
-      .eq("purchase_id", id),
+      .select("id, amount, method, paid_at, recorded_by")
+      .eq("purchase_id", id)
+      .order("paid_at", { ascending: true }),
   ]);
   if (purchaseRes.error) return { purchase: null, error: purchaseRes.error.message };
   if (paymentsRes.error) return { purchase: null, error: paymentsRes.error.message };
   if (!purchaseRes.data) return { purchase: null, error: "Compra no encontrada." };
-  const [purchase] = await attachCreators(supabase, withPaidAmounts(
-    [purchaseRes.data as unknown as Purchase],
-    paymentsRes.data ?? [],
-  ));
+
+  const paymentRows = (paymentsRes.data ?? []).map((row) => ({
+    id: row.id as string,
+    amount: Number(row.amount),
+    method: row.method as PaymentMethod,
+    paid_at: row.paid_at as string,
+    recorded_by: (row.recorded_by as string | null) ?? null,
+    recorder: null,
+  }));
+  const paid = paymentRows.reduce((sum, row) => sum + row.amount, 0);
+  const [withCreator] = await attachCreators(supabase, [
+    {
+      ...(purchaseRes.data as unknown as Purchase),
+      paid_amount: paid,
+      payments: paymentRows,
+    },
+  ]);
+  const purchase = await attachPaymentRecorders(supabase, withCreator);
   return { purchase, error: null };
 }
 
@@ -94,6 +113,44 @@ async function attachCreators(
         : null,
     };
   });
+}
+
+async function attachPaymentRecorders(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  purchase: Purchase,
+): Promise<Purchase> {
+  const ids = [
+    ...new Set(
+      (purchase.payments ?? [])
+        .map((payment) => payment.recorded_by)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (ids.length === 0) return purchase;
+
+  const { data, error } = await supabase
+    .from("profile_labels")
+    .select("id, full_name, username")
+    .in("id", ids);
+  if (error || !data) return purchase;
+
+  const byId = new Map(data.map((row) => [row.id as string, row]));
+  return {
+    ...purchase,
+    payments: (purchase.payments ?? []).map((payment) => {
+      const label = payment.recorded_by ? byId.get(payment.recorded_by) : undefined;
+      return {
+        ...payment,
+        recorder: label
+          ? {
+              email: null,
+              full_name: (label.full_name as string | null) ?? null,
+              username: (label.username as string | null) ?? null,
+            }
+          : null,
+      };
+    }),
+  };
 }
 
 function withPaidAmounts(

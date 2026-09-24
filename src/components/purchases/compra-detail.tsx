@@ -1,31 +1,43 @@
 "use client";
 
-import { FormEvent, useRef, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deletePurchaseAction } from "@/app/actions/purchases";
 import { createSupplierPaymentAction } from "@/app/actions/supplier-payments";
-import type { ProfileRef, Purchase } from "@/lib/data-types";
-import { purchaseBalance } from "@/lib/debts";
-import { formatBs, formatDateLaPaz } from "@/lib/format";
-import type { PaymentMethod } from "@/lib/types";
 import { BackArrowIcon } from "@/components/ui/back-arrow-icon";
 import { PencilIcon } from "@/components/ui/pencil-icon";
+import type { ProfileRef, Purchase, PurchasePayment } from "@/lib/data-types";
+import { purchaseBalance } from "@/lib/debts";
+import {
+  PAYMENT_METHOD_LABEL,
+  formatBs,
+  formatDateTimeLaPaz,
+  paymentLabel,
+} from "@/lib/format";
+import type { PaymentMethod } from "@/lib/types";
 
 type Props = {
   purchase: Purchase;
   canEdit: boolean;
 };
 
-type PayMode = "partial" | "total";
+function personEmail(person?: ProfileRef | null) {
+  return person?.email || person?.username || person?.full_name || "—";
+}
 
-function personName(person?: ProfileRef | null) {
-  return person?.full_name?.trim() || person?.username?.trim() || "—";
+function moneyInput(value: string) {
+  const cleaned = value.replace(/[^\d.,]/g, "").replace(",", ".");
+  const dot = cleaned.indexOf(".");
+  if (dot === -1) return cleaned;
+  const whole = cleaned.slice(0, dot);
+  const decimals = cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 2);
+  return `${whole}.${decimals}`;
 }
 
 function TrashIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 .9h8a1 1 0 0 0 1-.9l1-13"
         stroke="currentColor"
@@ -33,56 +45,75 @@ function TrashIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 
 export function CompraDetail({ purchase, canEdit }: Props) {
   const router = useRouter();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const deleteRef = useRef<HTMLDialogElement>(null);
-  const [mode, setMode] = useState<PayMode>("partial");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [deleteFeedback, setDeleteFeedback] = useState<string | null>(null);
+  const [addedPayments, setAddedPayments] = useState<PurchasePayment[]>([]);
+  const payRef = useRef<HTMLDialogElement>(null);
+  const noticeRef = useRef<HTMLDialogElement>(null);
+  const deleteRef = useRef<HTMLDialogElement>(null);
   const [pending, startTransition] = useTransition();
 
+  const paymentsChrono = useMemo(() => {
+    const known = new Set((purchase.payments ?? []).map((payment) => payment.id));
+    const extras = addedPayments.filter((payment) => !known.has(payment.id));
+    return [...(purchase.payments ?? []), ...extras].sort((a, b) =>
+      a.paid_at < b.paid_at ? -1 : a.paid_at > b.paid_at ? 1 : 0,
+    );
+  }, [purchase.payments, addedPayments]);
+
   const balance = purchaseBalance(purchase.total_amount, purchase.paid_amount ?? 0);
-  const title = purchase.suppliers?.name
-    ? `Compra · ${purchase.suppliers.name}`
-    : "Compra";
-  const payAmount =
-    mode === "total" ? balance.pending_amount : Number(amount);
-  const canSave =
-    balance.has_price &&
-    balance.pending_amount != null &&
-    payAmount != null &&
-    Number.isFinite(payAmount) &&
-    payAmount > 0 &&
-    payAmount <= balance.pending_amount + 0.001 &&
+  const pendingLeft = useMemo(() => {
+    if (balance.pending_amount == null) return null;
+    const known = new Set((purchase.payments ?? []).map((payment) => payment.id));
+    const extraPaid = addedPayments
+      .filter((payment) => !known.has(payment.id))
+      .reduce((sum, payment) => sum + Number(payment.amount), 0);
+    return Math.max(0, Math.round((balance.pending_amount - extraPaid) * 100) / 100);
+  }, [purchase.payments, balance.pending_amount, addedPayments]);
+
+  const amountNum = Number(amount);
+  const canPay =
+    pendingLeft != null &&
+    amount.trim() !== "" &&
+    Number.isFinite(amountNum) &&
+    amountNum > 0 &&
+    amountNum <= pendingLeft + 0.001 &&
     !pending;
 
+  useEffect(() => {
+    const dialog = noticeRef.current;
+    if (!notice || !dialog || dialog.open) return;
+    dialog.showModal();
+  }, [notice]);
+
+  function closeNotice() {
+    noticeRef.current?.close();
+  }
+
   function openPay() {
-    setMode("partial");
-    setAmount("");
+    const due = pendingLeft == null ? 0 : Math.round(pendingLeft * 100) / 100;
+    setAmount(due > 0 ? String(due) : "");
     setMethod("cash");
     setFeedback(null);
-    if (dialogRef.current && !dialogRef.current.open) {
-      dialogRef.current.showModal();
-    }
+    if (payRef.current && !payRef.current.open) payRef.current.showModal();
   }
 
   function closePay() {
-    dialogRef.current?.close();
+    payRef.current?.close();
   }
 
   function openDelete() {
     setDeleteFeedback(null);
-    if (deleteRef.current && !deleteRef.current.open) {
-      deleteRef.current.showModal();
-    }
+    if (deleteRef.current && !deleteRef.current.open) deleteRef.current.showModal();
   }
 
   function closeDelete() {
@@ -99,18 +130,21 @@ export function CompraDetail({ purchase, canEdit }: Props) {
       }
       deleteRef.current?.close();
       router.push("/compras");
+      router.refresh();
     });
   }
 
-  function onSubmit(e: FormEvent) {
+  function onPagar(e: FormEvent) {
     e.preventDefault();
-    if (!canSave || payAmount == null || !balance.pending_amount) return;
-    setFeedback(null);
+    if (!canPay) {
+      setFeedback("El monto no puede superar el saldo pendiente.");
+      return;
+    }
     startTransition(async () => {
       const result = await createSupplierPaymentAction({
         supplier_id: purchase.supplier_id,
         purchase_id: purchase.id,
-        amount: Math.round(payAmount * 100) / 100,
+        amount: Number(amount),
         method,
         notes: "",
       });
@@ -118,153 +152,183 @@ export function CompraDetail({ purchase, canEdit }: Props) {
         setFeedback(result.message);
         return;
       }
-      dialogRef.current?.close();
+      setFeedback(null);
+      if (result.paymentId) {
+        setAddedPayments((current) => [
+          {
+            id: result.paymentId as string,
+            amount: Number(amount),
+            method,
+            paid_at: result.paidAt ?? new Date().toISOString(),
+            recorded_by: null,
+          },
+          ...current,
+        ]);
+      }
+      payRef.current?.close();
+      setNotice(result.message);
       router.refresh();
     });
   }
 
-  return (
-    <div className="data-stack module-page">
-      <header className="module-hero">
-        <Link href="/compras" className="module-hero-back">
-          <BackArrowIcon />
-          Compras
-        </Link>
-      </header>
+  const supplierLine = [
+    purchase.suppliers?.phone || "Sin celular",
+    purchase.suppliers?.location || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-      <section className="compra-info">
-        <div className="compra-info-head">
-          <p className="data-card-title">{title}</p>
+  return (
+    <div className="data-stack">
+      <header className="venta-detail-header">
+        <div className="venta-detail-title-row">
+          <Link href="/compras" className="btn-icon-back" aria-label="Volver" title="Volver">
+            <BackArrowIcon />
+          </Link>
+          <h2 className="module-title">Compra</h2>
           {canEdit ? (
             <Link
               href={`/compras/${purchase.id}/editar`}
-              className="proveedor-icon-btn is-edit"
+              className="btn-icon-edit"
               aria-label="Editar compra"
               title="Editar"
             >
-              <PencilIcon size={16} />
+              <PencilIcon />
             </Link>
           ) : null}
-        </div>
-        <div className="compra-info-top">
-          <span
-            className={
-              balance.is_paid
-                ? "compra-status-tag is-paid"
-                : "compra-status-tag is-pending"
-            }
-          >
-            {balance.is_paid ? "Pagado" : "Pendiente"}
-          </span>
-          <div className="compra-info-figures">
-            <span>{purchase.quantity_birds} pollos</span>
-            {purchase.unit_price == null ? (
-              <span className="compra-define-price">Definir precio</span>
-            ) : (
-              <span>{formatBs(purchase.unit_price)}</span>
-            )}
-          </div>
-        </div>
-        <p className="compra-info-date">{formatDateLaPaz(purchase.purchase_date)}</p>
-        <p className="compra-info-user">{personName(purchase.creator)}</p>
-        {purchase.notes ? (
-          <p className="data-card-meta compra-info-notes">Notas: {purchase.notes}</p>
-        ) : null}
-      </section>
-
-      {canEdit || (balance.has_price && !balance.is_paid) ? (
-        <div className="compra-action-row">
           {canEdit ? (
             <button
               type="button"
-              className="compra-delete-btn"
-              onClick={openDelete}
-              disabled={pending}
+              className="btn-icon-delete"
               aria-label="Eliminar compra"
               title="Eliminar"
+              onClick={openDelete}
+              disabled={pending}
             >
               <TrashIcon />
             </button>
           ) : null}
-          {balance.has_price && !balance.is_paid ? (
-            <button type="button" className="btn-primary btn-form" onClick={openPay}>
-              Pagar
-            </button>
-          ) : null}
         </div>
+        <p className="data-card-meta">{formatDateTimeLaPaz(purchase.created_at)}</p>
+      </header>
+
+      <section className="data-form venta-detail-meta">
+        <p className="data-card-title">{purchase.suppliers?.name ?? "Proveedor"}</p>
+        <p className="data-card-meta">{supplierLine}</p>
+        <p className="data-card-meta">
+          Cantidad: {purchase.quantity_birds}
+          {" · "}
+          Precio: {purchase.unit_price == null ? "—" : formatBs(purchase.unit_price)}
+          {" · "}
+          Total: {purchase.total_amount == null ? "—" : formatBs(purchase.total_amount)}
+        </p>
+        {purchase.unit_price == null ? (
+          <p className="data-card-meta">Falta definir el precio.</p>
+        ) : pendingLeft != null && pendingLeft > 0.001 ? (
+          <p className="venta-pending-banner">
+            <span>Pendiente de pago</span>
+            <strong>{formatBs(pendingLeft)}</strong>
+          </p>
+        ) : (
+          <p className="compra-status-tag is-paid venta-paid-banner">Pagado</p>
+        )}
+        <p className="data-card-meta">Registrado por: {personEmail(purchase.creator)}</p>
+        {purchase.notes ? <p className="data-card-meta">Notas: {purchase.notes}</p> : null}
+      </section>
+
+      <section className="data-form">
+        <h3 className="data-form-title">Pagos</h3>
+        <ul className="venta-pay-list">
+          {paymentsChrono.map((payment, index) => (
+            <li key={payment.id} className="venta-pay-item">
+              <div>
+                <p className="data-card-title">
+                  {paymentLabel(paymentsChrono, index, purchase.total_amount)}
+                  {" · "}
+                  {formatBs(payment.amount)}
+                </p>
+                <p className="data-card-meta">
+                  {formatDateTimeLaPaz(payment.paid_at)} ·{" "}
+                  {PAYMENT_METHOD_LABEL[payment.method] ?? payment.method}
+                </p>
+                <p className="data-card-meta">Por: {personEmail(payment.recorder)}</p>
+              </div>
+            </li>
+          ))}
+          {paymentsChrono.length === 0 ? (
+            <li className="data-empty">
+              <p className="data-empty-title">Sin pagos</p>
+              <p>Cuando registres un pago, aparecerá aquí.</p>
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      <dialog
+        ref={noticeRef}
+        className="pay-dialog"
+        aria-labelledby="compra-pago-notice-title"
+        onClose={() => setNotice(null)}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="compra-pago-notice-title" className="data-form-title">
+            Pago
+          </h3>
+          <p className="data-card-meta">{notice}</p>
+          <div className="module-form-actions">
+            <button type="button" className="btn-primary" onClick={closeNotice}>
+              Listo
+            </button>
+          </div>
+        </div>
+      </dialog>
+
+      {pendingLeft != null && pendingLeft > 0.001 ? (
+        <button type="button" className="btn-primary btn-form" onClick={openPay}>
+          Pagar
+        </button>
       ) : null}
 
       <dialog
-        ref={dialogRef}
+        ref={payRef}
         className="pay-dialog"
-        aria-labelledby="pay-dialog-title"
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closePay();
+        aria-labelledby="compra-pay-title"
+        onClick={(event) => {
+          if (event.target === payRef.current) closePay();
         }}
-        onClose={() => setFeedback(null)}
       >
-        <form className="data-form pay-dialog-form" onSubmit={onSubmit}>
-          <h3 id="pay-dialog-title" className="data-form-title">
+        <form className="data-form pay-dialog-form" onSubmit={onPagar}>
+          <h3 id="compra-pay-title" className="data-form-title">
             Pagar
           </h3>
-          <p className="data-card-meta">
-            Pendiente: {formatBs(balance.pending_amount)}
+          <p className="venta-pending-banner">
+            <span>Pendiente de pago</span>
+            <strong>{formatBs(pendingLeft)}</strong>
           </p>
-          <div className="pay-mode" role="group" aria-label="Tipo de pago">
-            <button
-              type="button"
-              className="pay-mode-btn"
-              aria-pressed={mode === "partial"}
-              onClick={() => setMode("partial")}
+          <div className="field">
+            <label htmlFor="compra-pay-amt">Monto (Bs)</label>
+            <input
+              id="compra-pay-amt"
+              inputMode="decimal"
+              autoComplete="off"
+              enterKeyHint="done"
+              required
+              value={amount}
+              onChange={(event) => setAmount(moneyInput(event.target.value))}
               disabled={pending}
-            >
-              Pago parcial
-            </button>
-            <button
-              type="button"
-              className="pay-mode-btn"
-              aria-pressed={mode === "total"}
-              onClick={() => {
-                setMode("total");
-                setAmount(
-                  balance.pending_amount == null
-                    ? ""
-                    : String(balance.pending_amount),
-                );
-              }}
-              disabled={pending}
-            >
-              Pago total
-            </button>
+            />
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label htmlFor="compra-pay-amt">Monto (Bs)</label>
-              <input
-                id="compra-pay-amt"
-                type="number"
-                min={0.01}
-                max={balance.pending_amount ?? undefined}
-                step="0.01"
-                required
-                value={mode === "total" ? (balance.pending_amount ?? "") : amount}
-                onChange={(e) => setAmount(e.target.value)}
-                readOnly={mode === "total"}
-                disabled={pending}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="compra-pay-method">Método</label>
-              <select
-                id="compra-pay-method"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                disabled={pending}
-              >
-                <option value="cash">Efectivo</option>
-                <option value="qr">QR</option>
-              </select>
-            </div>
+          <div className="field">
+            <label htmlFor="compra-pay-method">Método</label>
+            <select
+              id="compra-pay-method"
+              value={method}
+              onChange={(event) => setMethod(event.target.value as PaymentMethod)}
+              disabled={pending}
+            >
+              <option value="cash">Efectivo</option>
+              <option value="qr">QR</option>
+            </select>
           </div>
           <div className="form-actions form-actions-split">
             <button
@@ -273,9 +337,9 @@ export function CompraDetail({ purchase, canEdit }: Props) {
               onClick={closePay}
               disabled={pending}
             >
-              Cerrar
+              Cancelar
             </button>
-            <button type="submit" className="btn-primary btn-form" disabled={!canSave}>
+            <button type="submit" className="btn-primary btn-form" disabled={!canPay}>
               {pending ? "Guardando…" : "Guardar"}
             </button>
           </div>
@@ -291,8 +355,8 @@ export function CompraDetail({ purchase, canEdit }: Props) {
         ref={deleteRef}
         className="pay-dialog"
         aria-labelledby="delete-dialog-title"
-        onClick={(e) => {
-          if (e.target === deleteRef.current) closeDelete();
+        onClick={(event) => {
+          if (event.target === deleteRef.current) closeDelete();
         }}
       >
         <div className="pay-dialog-form">
@@ -309,7 +373,7 @@ export function CompraDetail({ purchase, canEdit }: Props) {
               onClick={closeDelete}
               disabled={pending}
             >
-              Cerrar
+              Cancelar
             </button>
             <button
               type="button"

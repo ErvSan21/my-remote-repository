@@ -2377,7 +2377,8 @@ a.data-card:focus-visible {
 }
 
 .btn-icon-back,
-.btn-icon-edit {
+.btn-icon-edit,
+.btn-icon-delete {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -2400,6 +2401,11 @@ a.data-card:focus-visible {
   color: #c2410c;
 }
 
+.btn-icon-delete {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
 .btn-icon-back:hover,
 .btn-icon-edit:hover {
   background: rgba(30, 58, 95, 0.14);
@@ -2410,6 +2416,11 @@ a.data-card:focus-visible {
 .btn-icon-edit:hover {
   background: rgba(249, 115, 22, 0.28);
   color: #9a3412;
+}
+
+.btn-icon-delete:hover {
+  background: #fecdd3;
+  color: #be123c;
 }
 
 .data-form-stack {

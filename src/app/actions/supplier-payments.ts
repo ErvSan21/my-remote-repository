@@ -111,7 +111,7 @@ export async function createSupplierPaymentAction(input: {
   amount: number;
   method: PaymentMethod;
   notes: string;
-}): Promise<ActionResult> {
+}): Promise<ActionResult & { paymentId?: string; paidAt?: string }> {
   const auth = await requireAdmin();
   const amount = parseMoney(input.amount);
   const notes = boundedText(input.notes);
@@ -165,17 +165,22 @@ export async function createSupplierPaymentAction(input: {
     }
   }
 
-  const { error } = await supabase.from("supplier_payments").insert({
-    supplier_id: input.supplier_id,
-    purchase_id: input.purchase_id,
-    amount,
-    method: input.method,
-    notes: notes.value || null,
-    recorded_by: auth.user.id,
-    paid_at: new Date().toISOString(),
-  });
+  const paidAt = new Date().toISOString();
+  const { data: payment, error } = await supabase
+    .from("supplier_payments")
+    .insert({
+      supplier_id: input.supplier_id,
+      purchase_id: input.purchase_id,
+      amount,
+      method: input.method,
+      notes: notes.value || null,
+      recorded_by: auth.user.id,
+      paid_at: paidAt,
+    })
+    .select("id")
+    .single();
 
-  if (error) return { ok: false, message: error.message };
+  if (error || !payment) return { ok: false, message: error?.message || "No se registró el pago." };
 
   await refreshPurchaseStatus(supabase, input.purchase_id);
 
@@ -184,7 +189,12 @@ export async function createSupplierPaymentAction(input: {
   if (input.purchase_id) revalidatePath(`/compras/${input.purchase_id}`);
   revalidatePath("/proveedores");
   revalidatePath("/");
-  return { ok: true, message: "Pago registrado." };
+  return {
+    ok: true,
+    message: "Pago registrado.",
+    paymentId: payment.id,
+    paidAt,
+  };
 }
 
 async function refreshPurchaseStatus(
