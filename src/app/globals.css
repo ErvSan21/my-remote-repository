@@ -584,6 +584,14 @@ a {
   overflow-wrap: anywhere;
 }
 
+.metric-detail {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
+  color: #94a3b8;
+}
+
 .metric-hint {
   margin: 0.3rem 0 0;
   font-size: 0.75rem;

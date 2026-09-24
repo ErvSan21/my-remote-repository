@@ -3,6 +3,7 @@ type MetricIcon = "ventas" | "compras" | "cobrar" | "pagar" | "stock" | "utilida
 type MetricCardProps = {
   label: string;
   value: string;
+  detail?: string;
   hint?: string;
   tone?: "orange" | "blue" | "green";
   icon: MetricIcon;
@@ -62,6 +63,7 @@ function MetricGlyph({ icon }: { icon: MetricIcon }) {
 export function MetricCard({
   label,
   value,
+  detail,
   hint,
   tone = "blue",
   icon,
@@ -75,6 +77,7 @@ export function MetricCard({
         <p className="metric-label">{label}</p>
       </div>
       <p className="metric-value">{value}</p>
+      {detail ? <p className="metric-detail">{detail}</p> : null}
       {hint ? <p className="metric-hint">{hint}</p> : null}
     </article>
   );

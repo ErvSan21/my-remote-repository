@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
+function formatUnits(count: number) {
+  const units = count.toLocaleString("es-BO", { maximumFractionDigits: 0 });
+  return `${units} unidades`;
+}
+
 type Props = {
   searchParams: Promise<{ from?: string; to?: string }>;
 };
@@ -55,6 +60,14 @@ export default async function DashboardPage({ searchParams }: Props) {
   );
   const comprasTotal = compras.reduce(
     (sum, purchase) => sum + Number(purchase.total_amount ?? 0),
+    0,
+  );
+  const ventasQty = ventas.reduce(
+    (sum, venta) => sum + Number(venta.quantity_birds ?? 0),
+    0,
+  );
+  const comprasQty = compras.reduce(
+    (sum, purchase) => sum + Number(purchase.quantity_birds ?? 0),
     0,
   );
   const porCobrar = ventas.reduce(
@@ -101,6 +114,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="ventas"
           label="Ventas"
           value={formatBs(ventasTotal)}
+          detail={formatUnits(ventasQty)}
           hint={hint}
           tone="orange"
         />
@@ -108,6 +122,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           icon="compras"
           label="Compras"
           value={formatBs(comprasTotal)}
+          detail={formatUnits(comprasQty)}
           hint={hint}
           tone="orange"
         />
