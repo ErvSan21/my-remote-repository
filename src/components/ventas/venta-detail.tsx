@@ -25,17 +25,23 @@ function personEmail(p?: ProfileRef | null) {
   return p?.email || p?.username || p?.full_name || "—";
 }
 
+/** Solo dígitos y un decimal, con hasta dos centavos. */
+function moneyInput(value: string) {
+  const cleaned = value.replace(/[^\d.,]/g, "").replace(",", ".");
+  const dot = cleaned.indexOf(".");
+  if (dot === -1) return cleaned;
+  const whole = cleaned.slice(0, dot);
+  const decimals = cleaned.slice(dot + 1).replace(/\./g, "").slice(0, 2);
+  return `${whole}.${decimals}`;
+}
+
 export function VentaDetail({ venta, canEdit }: Props) {
   const router = useRouter();
-  const [showPagar, setShowPagar] = useState(false);
-  const [amount, setAmount] = useState(
-    venta.pending_amount > 0
-      ? String(Math.round(venta.pending_amount * 100) / 100)
-      : "",
-  );
+  const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const payRef = useRef<HTMLDialogElement>(null);
   const noticeRef = useRef<HTMLDialogElement>(null);
   const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
@@ -66,6 +72,18 @@ export function VentaDetail({ venta, canEdit }: Props) {
     noticeRef.current?.close();
   }
 
+  function openPay() {
+    const due = Math.round(venta.pending_amount * 100) / 100;
+    setAmount(due > 0 ? String(due) : "");
+    setMethod("cash");
+    setFeedback(null);
+    if (payRef.current && !payRef.current.open) payRef.current.showModal();
+  }
+
+  function closePay() {
+    payRef.current?.close();
+  }
+
   function onPagar(e: FormEvent) {
     e.preventDefault();
     if (!canPay) {
@@ -85,7 +103,7 @@ export function VentaDetail({ venta, canEdit }: Props) {
         return;
       }
       setFeedback(null);
-      setShowPagar(false);
+      payRef.current?.close();
       savedRef.current = true;
       setNotice(result.message);
     });
@@ -205,70 +223,72 @@ export function VentaDetail({ venta, canEdit }: Props) {
       </dialog>
 
       {venta.pending_amount > 0.001 ? (
-        showPagar ? (
-          <form className="data-form" onSubmit={onPagar}>
-            <h3 className="data-form-title">Pagar</h3>
-            <div className="field-row">
-              <div className="field">
-                <label htmlFor="vd-amt">Monto (Bs)</label>
-                <input
-                  id="vd-amt"
-                  type="number"
-                  min={0.01}
-                  max={venta.pending_amount}
-                  step="0.01"
-                  required
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  disabled={pending}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="vd-method">Método</label>
-                <select
-                  id="vd-method"
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                  disabled={pending}
-                >
-                  <option value="cash">Efectivo</option>
-                  <option value="qr">QR</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-actions form-actions-split">
-              <button
-                type="button"
-                className="btn-secondary btn-form"
-                onClick={() => setShowPagar(false)}
-                disabled={pending}
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="btn-primary btn-form"
-                disabled={!canPay}
-              >
-                {pending ? "Guardando…" : "Guardar"}
-              </button>
-            </div>
-            {feedback ? (
-              <p className="form-feedback" role="alert">
-                {feedback}
-              </p>
-            ) : null}
-          </form>
-        ) : (
-          <button
-            type="button"
-            className="btn-primary btn-form"
-            onClick={() => setShowPagar(true)}
-          >
-            Pagar
-          </button>
-        )
+        <button type="button" className="btn-primary btn-form" onClick={openPay}>
+          Pagar
+        </button>
       ) : null}
+
+      <dialog
+        ref={payRef}
+        className="pay-dialog"
+        aria-labelledby="venta-pay-title"
+        onClick={(event) => {
+          if (event.target === payRef.current) closePay();
+        }}
+      >
+        <form className="data-form pay-dialog-form" onSubmit={onPagar}>
+          <h3 id="venta-pay-title" className="data-form-title">
+            Pagar
+          </h3>
+          <p className="venta-pending-banner">
+            <span>Pendiente de pago</span>
+            <strong>{formatBs(venta.pending_amount)}</strong>
+          </p>
+          <div className="field">
+            <label htmlFor="vd-amt">Monto (Bs)</label>
+            <input
+              id="vd-amt"
+              inputMode="decimal"
+              autoComplete="off"
+              enterKeyHint="done"
+              required
+              value={amount}
+              onChange={(event) => setAmount(moneyInput(event.target.value))}
+              disabled={pending}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="vd-method">Método</label>
+            <select
+              id="vd-method"
+              value={method}
+              onChange={(event) => setMethod(event.target.value as PaymentMethod)}
+              disabled={pending}
+            >
+              <option value="cash">Efectivo</option>
+              <option value="qr">QR</option>
+            </select>
+          </div>
+          <div className="form-actions form-actions-split">
+            <button
+              type="button"
+              className="btn-secondary btn-form"
+              onClick={closePay}
+              disabled={pending}
+            >
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary btn-form" disabled={!canPay}>
+              {pending ? "Guardando…" : "Guardar"}
+            </button>
+          </div>
+          {feedback ? (
+            <p className="form-feedback" role="alert">
+              {feedback}
+            </p>
+          ) : null}
+        </form>
+      </dialog>
     </div>
   );
 }
