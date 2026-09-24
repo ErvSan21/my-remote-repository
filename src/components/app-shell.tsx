@@ -1,45 +1,30 @@
-import { signOutAction } from "@/app/actions/auth";
 import { bottomNavForRole, navForRole } from "@/lib/auth/permissions";
 import { FloatingDock } from "@/components/floating-dock";
+import { ProfileMenu } from "@/components/profile-menu";
 import { SideNavLinks } from "@/components/side-nav-links";
 import type { AppRole } from "@/lib/types";
 import type { ReactNode } from "react";
 
 type AppShellProps = {
   role: AppRole;
-  displayName?: string | null;
+  email?: string | null;
   children: ReactNode;
 };
 
-export function AppShell({ role, displayName, children }: AppShellProps) {
+export function AppShell({ role, email, children }: AppShellProps) {
   const nav = navForRole(role);
   const bottomNav = bottomNavForRole(role);
-  const roleLabel =
-    role === "superadmin"
-      ? "Superadmin"
-      : role === "admin"
-        ? "Admin"
-        : "Vendedora";
 
   return (
     <div className="app-shell">
       <header className="app-header app-header-slim">
         <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden />
           <div>
-            <p className="brand-name">MAC</p>
-            <p className="brand-sub">
-              {displayName
-                ? `${displayName} · Gestión Avícola`
-                : `Gestión Avícola · ${roleLabel}`}
-            </p>
+            <p className="brand-name">GESTIÓN AVÍCOLA - MAC</p>
+            {email ? <p className="brand-sub">{email}</p> : null}
           </div>
         </div>
-        <form action={signOutAction}>
-          <button type="submit" className="header-link header-button">
-            Salir
-          </button>
-        </form>
+        <ProfileMenu />
       </header>
 
       <div className="app-body">

@@ -14,6 +14,8 @@ import type { PaymentMethod } from "@/lib/types";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 import { parsePositiveInt } from "@/lib/numbers";
+import { DateRangeFields } from "@/components/date-range-fields";
+import { dayKeyLaPaz, weekBoundsLaPaz } from "@/lib/dates";
 
 type Props = {
   ventas: VentaRow[];
@@ -35,13 +37,6 @@ function normalize(value: string | null | undefined) {
   return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 }
 
-function dateKeyLaPaz(iso: string | null | undefined) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-CA", {
-    timeZone: "America/La_Paz",
-  });
-}
-
 export function VentasManager({
   ventas,
   clients,
@@ -58,8 +53,9 @@ export function VentasManager({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const week = weekBoundsLaPaz();
+  const [dateFrom, setDateFrom] = useState(week.from);
+  const [dateTo, setDateTo] = useState(week.to);
   const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}`);
 
   const unitPriceNum = Number(form.unit_price);
@@ -75,7 +71,9 @@ export function VentasManager({
     hasValidQty &&
     !pending;
 
+  const rangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
   const visible = useMemo(() => {
+    if (rangeInvalid) return [];
     const q = normalize(query.trim());
     return ventas.filter((v) => {
       if (q) {
@@ -85,12 +83,12 @@ export function VentasManager({
         );
         if (!haystack.includes(q)) return false;
       }
-      const saleDay = dateKeyLaPaz(v.created_at);
+      const saleDay = dayKeyLaPaz(v.created_at);
       if (dateFrom && saleDay < dateFrom) return false;
       if (dateTo && saleDay > dateTo) return false;
       return true;
     });
-  }, [ventas, query, dateFrom, dateTo]);
+  }, [ventas, query, dateFrom, dateTo, rangeInvalid]);
 
   function resetForm() {
     setForm({
@@ -308,42 +306,18 @@ export function VentasManager({
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <div className="list-date-filters">
-                <div className="field">
-                  <label htmlFor="ve-desde">Desde</label>
-                  <input
-                    id="ve-desde"
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="ve-hasta">Hasta</label>
-                  <input
-                    id="ve-hasta"
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </div>
-              </div>
-              {dateFrom && dateTo && dateFrom > dateTo ? (
+              <DateRangeFields
+                from={dateFrom}
+                to={dateTo}
+                fromId="ve-desde"
+                toId="ve-hasta"
+                onFrom={setDateFrom}
+                onTo={setDateTo}
+              />
+              {rangeInvalid ? (
                 <p className="form-feedback" role="alert">
-                  La fecha «Desde» es posterior a «Hasta».
+                  La fecha de inicio es posterior a la de fin.
                 </p>
-              ) : null}
-              {dateFrom || dateTo ? (
-                <button
-                  type="button"
-                  className="btn-secondary list-clear-dates"
-                  onClick={() => {
-                    setDateFrom("");
-                    setDateTo("");
-                  }}
-                >
-                  Limpiar fechas
-                </button>
               ) : null}
             </div>
 

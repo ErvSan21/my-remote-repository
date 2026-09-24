@@ -9,6 +9,8 @@ import { purchaseBalance } from "@/lib/debts";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadMoreButton, useLoadMore } from "@/components/ui/load-more";
 import { parsePositiveInt } from "@/lib/numbers";
+import { DateRangeFields } from "@/components/date-range-fields";
+import { dayKeyLaPaz, todayLaPaz, weekBoundsLaPaz } from "@/lib/dates";
 
 type Props = {
   suppliers: Supplier[];
@@ -16,22 +18,8 @@ type Props = {
   listError: string | null;
 };
 
-function todayLaPaz() {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: "America/La_Paz",
-  });
-}
-
 function normalize(value: string | null | undefined) {
   return (value ?? "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
-}
-
-function dateKeyLaPaz(iso: string | null | undefined) {
-  if (!iso) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-  return new Date(iso).toLocaleDateString("en-CA", {
-    timeZone: "America/La_Paz",
-  });
 }
 
 const emptyForm = {
@@ -55,8 +43,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const week = weekBoundsLaPaz();
+  const [dateFrom, setDateFrom] = useState(week.from);
+  const [dateTo, setDateTo] = useState(week.to);
   const { shown, more } = useLoadMore(`${query}|${dateFrom}|${dateTo}`);
 
   const supplierPhoneById = useMemo(() => {
@@ -67,7 +56,9 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
     return map;
   }, [suppliers]);
 
+  const rangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo);
   const visible = useMemo(() => {
+    if (rangeInvalid) return [];
     const q = normalize(query.trim());
     return purchases.filter((p) => {
       if (q) {
@@ -76,12 +67,12 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
         const haystack = normalize(`${p.suppliers?.name ?? ""} ${phone}`);
         if (!haystack.includes(q)) return false;
       }
-      const regDay = dateKeyLaPaz(p.created_at || p.purchase_date);
+      const regDay = dayKeyLaPaz(p.created_at || p.purchase_date);
       if (dateFrom && regDay < dateFrom) return false;
       if (dateTo && regDay > dateTo) return false;
       return true;
     });
-  }, [purchases, query, dateFrom, dateTo, supplierPhoneById]);
+  }, [purchases, query, dateFrom, dateTo, rangeInvalid, supplierPhoneById]);
 
   function resetForm() {
     setForm({
@@ -281,42 +272,18 @@ export function PurchasesManager({ suppliers, purchases, listError }: Props) {
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <div className="list-date-filters">
-                <div className="field">
-                  <label htmlFor="pur-desde">Desde</label>
-                  <input
-                    id="pur-desde"
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="pur-hasta">Hasta</label>
-                  <input
-                    id="pur-hasta"
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </div>
-              </div>
-              {dateFrom && dateTo && dateFrom > dateTo ? (
+              <DateRangeFields
+                from={dateFrom}
+                to={dateTo}
+                fromId="pur-desde"
+                toId="pur-hasta"
+                onFrom={setDateFrom}
+                onTo={setDateTo}
+              />
+              {rangeInvalid ? (
                 <p className="form-feedback" role="alert">
-                  La fecha «Desde» es posterior a «Hasta».
+                  La fecha de inicio es posterior a la de fin.
                 </p>
-              ) : null}
-              {dateFrom || dateTo ? (
-                <button
-                  type="button"
-                  className="btn-secondary list-clear-dates"
-                  onClick={() => {
-                    setDateFrom("");
-                    setDateTo("");
-                  }}
-                >
-                  Limpiar fechas
-                </button>
               ) : null}
             </div>
 

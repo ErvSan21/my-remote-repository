@@ -4,43 +4,13 @@ import { listPurchasesAction } from "@/app/actions/purchases";
 import { DashRange } from "@/components/dash-range";
 import { MetricCard } from "@/components/metric-card";
 import { requireAdmin } from "@/lib/auth/guards";
+import { dayKeyLaPaz, inDateRange, weekBoundsLaPaz } from "@/lib/dates";
 import { purchaseBalance } from "@/lib/debts";
 import { formatBs } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
-
-function todayLaPaz() {
-  return new Date().toLocaleDateString("en-CA", {
-    timeZone: "America/La_Paz",
-  });
-}
-
-function weekBoundsLaPaz(today = todayLaPaz()) {
-  const [year, month, day] = today.split("-").map(Number);
-  const anchor = new Date(Date.UTC(year, month - 1, day));
-  const weekday = anchor.getUTCDay();
-  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
-  const monday = new Date(anchor);
-  monday.setUTCDate(anchor.getUTCDate() + mondayOffset);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
-  return { from: iso(monday), to: iso(sunday) };
-}
-
-function dayKey(iso: string | null | undefined) {
-  if (!iso) return "";
-  if (DATE_KEY.test(iso)) return iso;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
-}
-
-function inRange(day: string, from: string, to: string) {
-  return Boolean(day) && day >= from && day <= to;
-}
 
 type Props = {
   searchParams: Promise<{ from?: string; to?: string }>;
@@ -68,11 +38,13 @@ export default async function DashboardPage({ searchParams }: Props) {
 
   const ventas = rangeInvalid
     ? []
-    : ventasRes.ventas.filter((venta) => inRange(dayKey(venta.created_at), from, to));
+    : ventasRes.ventas.filter((venta) =>
+        inDateRange(dayKeyLaPaz(venta.created_at), from, to),
+      );
   const compras = rangeInvalid
     ? []
     : purchasesRes.purchases.filter((purchase) =>
-        inRange(dayKey(purchase.created_at || purchase.purchase_date), from, to),
+        inDateRange(dayKeyLaPaz(purchase.created_at || purchase.purchase_date), from, to),
       );
 
   const ventasTotal = ventas.reduce(

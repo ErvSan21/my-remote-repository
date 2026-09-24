@@ -1,27 +1,14 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/guards";
 import { listSuppliersForClosure } from "@/app/actions/closures";
+import { weekBoundsLaPaz } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
-
-function weekRangeLaPaz() {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }),
-  );
-  const day = now.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayOffset);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString("en-CA");
-  return { from: fmt(monday), to: fmt(sunday) };
-}
 
 export default async function CierresPage() {
   await requireAdmin();
   const suppliers = await listSuppliersForClosure();
-  const week = weekRangeLaPaz();
+  const week = weekBoundsLaPaz();
 
   return (
     <div className="data-stack">

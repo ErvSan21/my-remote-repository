@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DateRangeFields } from "@/components/date-range-fields";
 
 type Props = {
   from: string;
@@ -19,27 +20,13 @@ export function DashRange({ from, to }: Props) {
   }
 
   return (
-    <div className="dash-range">
-      <label>
-        Inicio
-        <input
-          type="date"
-          name="from"
-          value={from}
-          max={to || undefined}
-          onChange={(event) => go(event.target.value, to)}
-        />
-      </label>
-      <label>
-        Fin
-        <input
-          type="date"
-          name="to"
-          value={to}
-          min={from || undefined}
-          onChange={(event) => go(from, event.target.value)}
-        />
-      </label>
-    </div>
+    <DateRangeFields
+      from={from}
+      to={to}
+      fromId="dash-from"
+      toId="dash-to"
+      onFrom={(value) => go(value, to)}
+      onTo={(value) => go(from, value)}
+    />
   );
 }

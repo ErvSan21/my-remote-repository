@@ -18,6 +18,8 @@ function isVendedoraPath(path: string): boolean {
 export function canAccessPath(pathname: string, role: AppRole): boolean {
   const path = pathname.split("?")[0] || "/";
 
+  if (path === "/perfil") return true;
+
   if (role === "vendedora") {
     return isVendedoraPath(path);
   }
