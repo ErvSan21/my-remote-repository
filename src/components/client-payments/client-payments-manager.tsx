@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createClientPaymentAction,
@@ -49,7 +49,10 @@ export function ClientPaymentsManager({
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [notes, setNotes] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const noticeRef = useRef<HTMLDialogElement>(null);
+  const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
   const editing = Boolean(editId);
   const { shown, more } = useLoadMore("cobros");
@@ -78,10 +81,30 @@ export function ClientPaymentsManager({
     setShowForm(false);
   }
 
+  useEffect(() => {
+    const dialog = noticeRef.current;
+    if (!notice || !dialog || dialog.open) return;
+    dialog.showModal();
+  }, [notice]);
+
+  function closeNotice() {
+    noticeRef.current?.close();
+  }
+
+  function openReceipt() {
+    const id = receiptId;
+    savedRef.current = false;
+    noticeRef.current?.close();
+    if (!id) return;
+    router.push(`/recibos/${id}`);
+    router.refresh();
+  }
+
   function openCreate() {
     resetForm();
     setShowForm(true);
-    setFeedback(null);
+    setNotice(null);
+    setReceiptId(null);
   }
 
   function openEdit(p: ClientPayment) {
@@ -92,7 +115,8 @@ export function ClientPaymentsManager({
     setMethod(p.method === "qr" ? "qr" : "cash");
     setNotes(p.notes ?? "");
     setShowForm(true);
-    setFeedback(null);
+    setNotice(null);
+    setReceiptId(null);
   }
 
   function onSubmit(e: FormEvent) {
@@ -107,11 +131,16 @@ export function ClientPaymentsManager({
           method,
           notes,
         });
-        setFeedback(result.message);
-        if (result.ok) {
-          resetForm();
-          router.refresh();
+        if (!result.ok) {
+          savedRef.current = false;
+          setReceiptId(null);
+          setNotice(result.message);
+          return;
         }
+        resetForm();
+        savedRef.current = true;
+        setReceiptId(null);
+        setNotice(result.message);
         return;
       }
 
@@ -122,12 +151,16 @@ export function ClientPaymentsManager({
         method,
         notes,
       });
-      setFeedback(result.message);
-      if (result.ok && result.receiptId) {
-        resetForm();
-        router.push(`/recibos/${result.receiptId}`);
-        router.refresh();
+      if (!result.ok) {
+        savedRef.current = false;
+        setReceiptId(null);
+        setNotice(result.message);
+        return;
       }
+      resetForm();
+      savedRef.current = true;
+      setReceiptId(result.receiptId ?? null);
+      setNotice(result.message);
     });
   }
 
@@ -247,9 +280,38 @@ export function ClientPaymentsManager({
               {pending ? "Guardando…" : editing ? "Guardar" : "Crear"}
             </button>
           </div>
-          {feedback ? <p className="login-hint">{feedback}</p> : null}
         </form>
       ) : null}
+
+      <dialog
+        ref={noticeRef}
+        className="pay-dialog"
+        aria-labelledby="cobro-notice-title"
+        onClose={() => {
+          setNotice(null);
+          if (savedRef.current) {
+            savedRef.current = false;
+            router.refresh();
+          }
+        }}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="cobro-notice-title" className="data-form-title">
+            Cobro
+          </h3>
+          <p className="data-card-meta">{notice}</p>
+          <div className="module-form-actions">
+            {receiptId ? (
+              <button type="button" className="btn-muted" onClick={openReceipt}>
+                Ver recibo
+              </button>
+            ) : null}
+            <button type="button" className="btn-primary" onClick={closeNotice}>
+              Listo
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       {!showForm ? (
       <>

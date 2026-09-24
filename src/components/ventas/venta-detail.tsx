@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientPaymentAction } from "@/app/actions/client-payments";
@@ -35,6 +35,10 @@ export function VentaDetail({ venta, canEdit }: Props) {
   );
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const noticeRef = useRef<HTMLDialogElement>(null);
+  const savedRef = useRef(false);
   const [pending, startTransition] = useTransition();
 
   const paymentsChrono = useMemo(
@@ -53,6 +57,25 @@ export function VentaDetail({ venta, canEdit }: Props) {
     amountNum <= venta.pending_amount + 0.001 &&
     !pending;
 
+  useEffect(() => {
+    const dialog = noticeRef.current;
+    if (!notice || !dialog || dialog.open) return;
+    dialog.showModal();
+  }, [notice]);
+
+  function closeNotice() {
+    noticeRef.current?.close();
+  }
+
+  function openReceipt() {
+    const id = receiptId;
+    savedRef.current = false;
+    noticeRef.current?.close();
+    if (!id) return;
+    router.push(`/recibos/${id}`);
+    router.refresh();
+  }
+
   function onPagar(e: FormEvent) {
     e.preventDefault();
     if (!canPay) {
@@ -67,14 +90,15 @@ export function VentaDetail({ venta, canEdit }: Props) {
         method,
         notes: "",
       });
-      setFeedback(result.message);
-      if (result.ok && result.receiptId) {
-        router.push(`/recibos/${result.receiptId}`);
-        router.refresh();
-      } else if (result.ok) {
-        setShowPagar(false);
-        router.refresh();
+      if (!result.ok) {
+        setFeedback(result.message);
+        return;
       }
+      setFeedback(null);
+      setShowPagar(false);
+      savedRef.current = true;
+      setReceiptId(result.receiptId ?? null);
+      setNotice(result.message);
     });
   }
 
@@ -165,6 +189,36 @@ export function VentaDetail({ venta, canEdit }: Props) {
           ) : null}
         </ul>
       </section>
+
+      <dialog
+        ref={noticeRef}
+        className="pay-dialog"
+        aria-labelledby="venta-cobro-notice-title"
+        onClose={() => {
+          setNotice(null);
+          if (savedRef.current) {
+            savedRef.current = false;
+            router.refresh();
+          }
+        }}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="venta-cobro-notice-title" className="data-form-title">
+            Cobro
+          </h3>
+          <p className="data-card-meta">{notice}</p>
+          <div className="module-form-actions">
+            {receiptId ? (
+              <button type="button" className="btn-muted" onClick={openReceipt}>
+                Ver recibo
+              </button>
+            ) : null}
+            <button type="button" className="btn-primary" onClick={closeNotice}>
+              Listo
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       {venta.pending_amount > 0.001 ? (
         showPagar ? (
