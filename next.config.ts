@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Hide the floating Next.js "N" / turbopack badge in local/dev.
   devIndicators: false,
+  // Cursor's preview talks to the dev server as 127.0.0.1.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async redirects() {
     return [
       {
