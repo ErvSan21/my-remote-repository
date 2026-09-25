@@ -35,6 +35,9 @@ const MIGRATION_HINT =
 const PASSWORD_HASH_HINT =
   "La contraseña no quedó lista para ingresar. Pega supabase/migrations/010_password_hash.sql en el SQL Editor de Supabase, ejecútalo y vuelve a pulsar Generar.";
 
+const CREATE_USER_HINT =
+  "Supabase bloqueó el correo de confirmación. Pega supabase/migrations/011_create_user_without_email.sql en el SQL Editor, ejecútalo y vuelve a crear el usuario.";
+
 const PROFILE_SELECTS = [
   "id, username, full_name, email, role, active, enabled_modules, must_change_password",
   "id, username, full_name, email, role, active",
@@ -155,7 +158,7 @@ export async function createUserAction(input: {
 
   const modules = sanitizeModules(input.role, input.modules);
   const password = makeProvisionalPassword();
-  return createWithSignup(email, password, name.value, input.role, modules);
+  return createWithoutEmail(email, password, name.value, input.role, modules);
 }
 
 export async function updateUserAccessAction(input: {
@@ -324,71 +327,36 @@ async function passwordLogsIn(
   return { ok: false, message: PASSWORD_HASH_HINT };
 }
 
-async function createWithSignup(
+async function createWithoutEmail(
   email: string,
   password: string,
   fullName: string,
   role: AppRole,
   modules: string[],
 ): Promise<UserActionResult> {
-  const url = getSupabaseUrl();
-  const key = getSupabasePublishableKey();
-  if (!url || !key) {
-    return { ok: false, message: "Falta la configuración pública de Supabase." };
-  }
-
-  const anon = createSupabaseClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const signed = await anon.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName, role } },
-  });
-
-  if (signed.error || !signed.data.user) {
-    return { ok: false, message: createUserError(signed.error?.message ?? "") };
-  }
-  const identities = signed.data.user.identities;
-  if (!Array.isArray(identities) || identities.length === 0) {
-    return { ok: false, message: "Ese correo ya tiene una cuenta." };
-  }
-
   const supabase = await createClient();
-  const saved = await supabase
-    .from("profiles")
-    .update({
-      full_name: fullName,
-      role,
-      active: true,
-      enabled_modules: modules,
-      must_change_password: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", signed.data.user.id)
-    .select("id");
+  const created = await supabase.rpc("admin_create_user_hash", {
+    p_email: email,
+    p_password_hash: passwordHash(password),
+    p_full_name: fullName,
+    p_role: role,
+    p_modules: modules,
+  });
 
-  if (saved.error && missingProfileColumn(saved.error)) {
-    const basic = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName,
-        role,
-        active: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", signed.data.user.id);
-    if (basic.error) return { ok: false, message: dbMessage(basic.error) };
-  } else if (saved.error) {
-    return { ok: false, message: dbMessage(saved.error) };
-  }
-
-  if (!signed.data.session) {
-    await supabase.rpc("admin_confirm_email", { target: signed.data.user.id });
+  if (created.error) {
+    return {
+      ok: false,
+      message: missingRpc(created.error) ? CREATE_USER_HINT : dbMessage(created.error),
+    };
   }
 
   const login = await passwordLogsIn(email, password);
-  if (!login.ok) return login;
+  if (!login.ok) {
+    return {
+      ok: false,
+      message: "El usuario quedó creado, pero esa contraseña no ingresa. Elimínalo y créalo de nuevo.",
+    };
+  }
 
   revalidatePath("/usuarios");
   return {
@@ -396,15 +364,4 @@ async function createWithSignup(
     message: "Usuario creado. Comparte la contraseña provisional.",
     password,
   };
-}
-
-function createUserError(message: string) {
-  const lower = message.toLowerCase();
-  if (lower.includes("already") || lower.includes("registered") || lower.includes("exists")) {
-    return "Ese correo ya tiene una cuenta.";
-  }
-  if (lower.includes("signups not allowed") || lower.includes("signup")) {
-    return MIGRATION_HINT;
-  }
-  return message || "No se pudo crear el usuario.";
 }
