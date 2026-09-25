@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PasswordToggle } from "@/components/ui/password-toggle";
 import { createClient } from "@/lib/supabase/client";
 import { canAccessPath, homePathForRole, isAppRole } from "@/lib/auth/permissions";
 import { safeInternalPath } from "@/lib/auth/redirects";
@@ -33,6 +34,7 @@ export function LoginForm({
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(() => {
     if (setupMissing) {
       return "Faltan las variables de Supabase en este entorno. Revisa .env.local (URL + PUBLISHABLE_KEY o ANON_KEY), reinicia `npm run dev` y abre /login sin ?setup=1.";
@@ -81,11 +83,19 @@ export function LoginForm({
         return;
       }
 
-      const { data: profile } = await supabase
+      const fullProfile = await supabase
         .from("profiles")
-        .select("role, active")
+        .select("role, active, enabled_modules, must_change_password")
         .eq("id", userId)
         .maybeSingle();
+      const profileResult = fullProfile.error
+        ? await supabase
+            .from("profiles")
+            .select("role, active")
+            .eq("id", userId)
+            .maybeSingle()
+        : fullProfile;
+      const profile = profileResult.data;
 
       if (!profile || profile.active === false || !isAppRole(profile.role)) {
         await supabase.auth.signOut();
@@ -99,11 +109,18 @@ export function LoginForm({
       }
 
       const role = profile.role;
+      const modules =
+        "enabled_modules" in profile && Array.isArray(profile.enabled_modules)
+          ? profile.enabled_modules
+          : null;
+      const mustChange =
+        "must_change_password" in profile && profile.must_change_password === true;
       const preferred = safeInternalPath(nextPath);
-      const destination =
-        preferred && canAccessPath(preferred, role)
+      const destination = mustChange
+        ? "/cambiar-contrasena"
+        : preferred && canAccessPath(preferred, role, modules)
           ? preferred
-          : homePathForRole(role);
+          : homePathForRole(role, modules);
 
       router.replace(destination);
       router.refresh();
@@ -182,13 +199,18 @@ export function LoginForm({
           <input
             id="password"
             name="password"
-            type="password"
+            className="has-toggle"
+            type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Contraseña"
             required
             disabled={setupMissing || pending}
+          />
+          <PasswordToggle
+            shown={showPassword}
+            onToggle={() => setShowPassword((value) => !value)}
           />
         </div>
       </div>

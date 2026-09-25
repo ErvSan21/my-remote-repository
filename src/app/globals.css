@@ -362,6 +362,65 @@ a {
   margin: 0 auto;
 }
 
+@media (min-width: 900px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-header {
+    grid-column: 1 / -1;
+  }
+
+  .app-body {
+    display: contents;
+    max-width: none;
+    margin: 0;
+  }
+
+  .app-main {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 1.75rem 2rem;
+  }
+
+  .module-page,
+  .dash-page {
+    margin-left: -1.75rem;
+    margin-right: -1.75rem;
+  }
+
+  .module-page .data-list,
+  .module-page .data-form,
+  .module-page .module-note,
+  .module-page .skeleton-stack,
+  .module-page > .search-bar,
+  .module-page > .form-feedback,
+  .module-page > .login-hint,
+  .dash-page .metrics-grid,
+  .dash-page .dash-range,
+  .dash-page .date-range,
+  .dash-page .dash-range-note,
+  .dash-page .setup-banner {
+    margin-left: 1.75rem;
+    margin-right: 1.75rem;
+  }
+
+  .profile-menu-users {
+    display: none;
+  }
+
+  .data-list.user-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
 .side-nav {
   display: none;
   width: 220px;
@@ -371,7 +430,14 @@ a {
 
 @media (min-width: 900px) {
   .side-nav {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 1.35rem 0.9rem 1.5rem;
+    border-right: 1px solid var(--line);
+    background: #fff;
   }
 }
 
@@ -856,6 +922,33 @@ a {
   min-height: 2.75rem;
 }
 
+.login-card input.has-toggle,
+.data-form .login-input-wrap input.has-toggle {
+  padding-right: 2.85rem;
+}
+
+.login-eye {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.login-eye:hover {
+  color: var(--navy);
+  background: rgba(30, 58, 95, 0.06);
+}
+
 .login-card input:focus,
 .login-card select:focus,
 .reset-form input:focus,
@@ -953,6 +1046,78 @@ a {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink-soft);
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--navy);
+  font-size: 0.75rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.user-pill.is-blocked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.user-module-line {
+  margin-top: 0.7rem;
+}
+
+.user-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+}
+
+.user-card-actions .btn-secondary,
+.user-card-actions .btn-danger {
+  width: auto;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.user-dialog {
+  width: min(100% - 2rem, 28rem);
+}
+
+.user-dialog .module-form-actions .btn-primary,
+.user-dialog .module-form-actions .btn-secondary,
+.user-dialog .module-form-actions .btn-danger,
+.pay-dialog .module-form-actions .btn-danger {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.user-modules {
+  border: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.user-modules legend {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 0.2rem;
+}
+
+.provisional-password {
+  margin-top: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--navy);
 }
 
 .reset-form .btn-primary {

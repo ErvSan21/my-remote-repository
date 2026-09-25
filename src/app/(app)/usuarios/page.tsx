@@ -13,5 +13,11 @@ export default async function UsuariosPage() {
 
   const { users, error } = await listUsersAction();
 
-  return <UsersAdmin users={users} listError={error} />;
+  return (
+    <UsersAdmin
+      users={users}
+      listError={error}
+      currentUserId={auth.user.id}
+    />
+  );
 }

@@ -8,12 +8,13 @@ import type { ReactNode } from "react";
 type AppShellProps = {
   role: AppRole;
   email?: string | null;
+  modules?: string[] | null;
   children: ReactNode;
 };
 
-export function AppShell({ role, email, children }: AppShellProps) {
-  const nav = navForRole(role);
-  const bottomNav = bottomNavForRole(role);
+export function AppShell({ role, email, modules = null, children }: AppShellProps) {
+  const nav = navForRole(role, modules);
+  const bottomNav = bottomNavForRole(role, modules);
 
   return (
     <div className="app-shell">
@@ -24,7 +25,7 @@ export function AppShell({ role, email, children }: AppShellProps) {
             {email ? <p className="brand-sub">{email}</p> : null}
           </div>
         </div>
-        <ProfileMenu />
+        <ProfileMenu showUsers={role === "superadmin"} />
       </header>
 
       <div className="app-body">

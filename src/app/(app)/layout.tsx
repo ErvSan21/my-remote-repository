@@ -16,7 +16,11 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell role={auth.profile.role} email={auth.user.email}>
+    <AppShell
+      role={auth.profile.role}
+      email={auth.user.email}
+      modules={auth.profile.enabled_modules}
+    >
       {children}
     </AppShell>
   );

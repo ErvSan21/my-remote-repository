@@ -7,6 +7,7 @@ export const APP_NAV: NavItem[] = [
     label: "Inicio",
     shortLabel: "Inicio",
     icon: "home",
+    module: "inicio",
     roles: ["admin", "superadmin"],
   },
   {
@@ -14,6 +15,7 @@ export const APP_NAV: NavItem[] = [
     label: "Ventas",
     shortLabel: "Ventas",
     icon: "cash",
+    module: "ventas",
     roles: ["vendedora", "admin", "superadmin"],
   },
   {
@@ -21,6 +23,7 @@ export const APP_NAV: NavItem[] = [
     label: "Compras",
     shortLabel: "Compras",
     icon: "purchases",
+    module: "compras",
     roles: ["admin", "superadmin"],
   },
   {
@@ -28,6 +31,7 @@ export const APP_NAV: NavItem[] = [
     label: "Clientes",
     shortLabel: "Clientes",
     icon: "clients",
+    module: "clientes",
     roles: ["admin", "superadmin"],
   },
   {
@@ -35,6 +39,7 @@ export const APP_NAV: NavItem[] = [
     label: "Proveedores",
     shortLabel: "Proveedores",
     icon: "suppliers",
+    module: "proveedores",
     roles: ["admin", "superadmin"],
   },
 ];

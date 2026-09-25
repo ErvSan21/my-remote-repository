@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { canAccessPath, homePathForRole, isAppRole } from "@/lib/auth/permissions";
+import { fetchProfileRow } from "@/lib/auth/profile-row";
+import { canAccessPath, homePathForRole } from "@/lib/auth/permissions";
 import { safeInternalPath } from "@/lib/auth/redirects";
 import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/env";
 
@@ -115,28 +116,37 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, active")
-    .eq("id", user!.id)
-    .maybeSingle();
+  const { profile } = await fetchProfileRow((columns) =>
+    supabase.from("profiles").select(columns).eq("id", user!.id).maybeSingle(),
+  );
 
-  const role = isAppRole(profile?.role) ? profile.role : null;
-  const active = Boolean(profile && profile.active !== false && role);
+  const role = profile?.role ?? null;
+  const active = Boolean(profile && profile.active && role);
 
-  if (!active || !role) {
+  if (!active || !role || !profile) {
     await supabase.auth.signOut();
     return redirectTo("/login", {
       disabled: profile && profile.active === false ? "1" : null,
     });
   }
 
-  if (isLogin) {
-    return redirectTo(homePathForRole(role), {});
+  const modules = profile.enabled_modules;
+  const home = homePathForRole(role, modules);
+
+  if (profile.must_change_password && pathname !== "/cambiar-contrasena") {
+    return redirectTo("/cambiar-contrasena", {});
   }
 
-  if (!canAccessPath(pathname, role)) {
-    return redirectTo(homePathForRole(role), {});
+  if (!profile.must_change_password && pathname === "/cambiar-contrasena") {
+    return redirectTo(home, {});
+  }
+
+  if (isLogin) {
+    return redirectTo(home, {});
+  }
+
+  if (!canAccessPath(pathname, role, modules)) {
+    return redirectTo(home, {});
   }
 
   return supabaseResponse;

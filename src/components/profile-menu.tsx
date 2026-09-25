@@ -4,7 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { signOutAction } from "@/app/actions/auth";
 
-export function ProfileMenu() {
+type ProfileMenuProps = {
+  showUsers?: boolean;
+};
+
+export function ProfileMenu({ showUsers = false }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -66,6 +70,16 @@ export function ProfileMenu() {
           >
             Perfil
           </Link>
+          {showUsers ? (
+            <Link
+              href="/usuarios"
+              role="menuitem"
+              className="profile-menu-item profile-menu-users"
+              onClick={() => setOpen(false)}
+            >
+              Usuarios
+            </Link>
+          ) : null}
           <form action={signOutAction}>
             <button type="submit" role="menuitem" className="profile-menu-item">
               Cerrar sesión

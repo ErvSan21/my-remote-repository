@@ -1,16 +1,10 @@
 import { cache } from "react";
+import { fetchProfileRow, type Profile } from "@/lib/auth/profile-row";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabasePublicEnv } from "@/lib/env";
-import type { AppRole } from "@/lib/types";
 import type { User } from "@supabase/supabase-js";
 
-export type Profile = {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  role: AppRole;
-  active: boolean;
-};
+export type { Profile };
 
 export type AuthContext = {
   user: User;
@@ -27,11 +21,9 @@ export const getAuthContext = cache(async function getAuthContext(): Promise<Aut
 
   if (!user) return null;
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, role, active")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { profile, error } = await fetchProfileRow((columns) =>
+    supabase.from("profiles").select(columns).eq("id", user.id).maybeSingle(),
+  );
 
   if (error || !profile) {
     return null;

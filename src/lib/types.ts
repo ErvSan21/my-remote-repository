@@ -26,6 +26,8 @@ export type NavItem = {
   label: string;
   /** Roles that can see this nav item. Empty = all authenticated. */
   roles?: AppRole[];
+  /** Módulo que debe estar habilitado para ver este ítem. */
+  module?: "inicio" | "ventas" | "compras" | "clientes" | "proveedores";
   shortLabel?: string;
   icon?: NavIcon;
 };
