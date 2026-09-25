@@ -2,7 +2,10 @@
 
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { replaceProvisionalPasswordAction } from "@/app/actions/profile";
+import {
+  dismissProvisionalPasswordAction,
+  replaceProvisionalPasswordAction,
+} from "@/app/actions/profile";
 import { PasswordToggle } from "@/components/ui/password-toggle";
 import { homePathForRole } from "@/lib/auth/permissions";
 import type { AppRole } from "@/lib/types";
@@ -22,6 +25,11 @@ export function ProvisionalPasswordForm({ role, modules }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  function leave() {
+    router.replace(homePathForRole(role, modules));
+    router.refresh();
+  }
+
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     startTransition(async () => {
@@ -32,8 +40,18 @@ export function ProvisionalPasswordForm({ role, modules }: Props) {
       });
       setMessage(result.message);
       if (!result.ok) return;
-      router.replace(homePathForRole(role, modules));
-      router.refresh();
+      leave();
+    });
+  }
+
+  function onClose() {
+    startTransition(async () => {
+      const result = await dismissProvisionalPasswordAction();
+      if (!result.ok) {
+        setMessage(result.message);
+        return;
+      }
+      leave();
     });
   }
 
@@ -42,7 +60,7 @@ export function ProvisionalPasswordForm({ role, modules }: Props) {
       <header className="module-hero">
         <h1 className="module-hero-title">Cambia tu contraseña</h1>
         <p className="module-hero-sub">
-          Esta cuenta tiene una contraseña provisional. Elige una nueva para entrar.
+          Puedes elegir una nueva contraseña o cerrar y seguir con la actual.
         </p>
       </header>
       <form className="data-form" onSubmit={onSubmit}>
@@ -79,9 +97,14 @@ export function ProvisionalPasswordForm({ role, modules }: Props) {
             onChange={(event) => setConfirm(event.target.value)}
           />
         </div>
-        <button type="submit" className="btn-primary btn-form" disabled={pending}>
-          {pending ? "Guardando…" : "Guardar contraseña"}
-        </button>
+        <div className="module-form-actions">
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={pending}>
+            Cerrar
+          </button>
+          <button type="submit" className="btn-primary" disabled={pending}>
+            {pending ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
         {message ? (
           <p className="form-feedback" role="status">
             {message}

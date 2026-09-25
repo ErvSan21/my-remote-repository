@@ -41,9 +41,11 @@ export function UsersAdmin({ users, listError, currentUserId }: Props) {
   const [createModules, setCreateModules] = useState<AppModule[]>(["ventas"]);
   const [confirmDelete, setConfirmDelete] = useState<UserRow | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<UserRow | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState<UserRow | null>(null);
 
   const createRef = useRef<HTMLDialogElement>(null);
   const editRef = useRef<HTMLDialogElement>(null);
+  const passwordAskRef = useRef<HTMLDialogElement>(null);
   const passwordRef = useRef<HTMLDialogElement>(null);
   const deleteRef = useRef<HTMLDialogElement>(null);
   const blockRef = useRef<HTMLDialogElement>(null);
@@ -103,10 +105,22 @@ export function UsersAdmin({ users, listError, currentUserId }: Props) {
     });
   }
 
-  function onProvisional(user: UserRow) {
+  function askProvisional(user: UserRow) {
+    setConfirmPassword(user);
     setFeedback(null);
+    passwordAskRef.current?.showModal();
+  }
+
+  function onConfirmProvisional() {
+    if (!confirmPassword) return;
+    const userId = confirmPassword.id;
     startTransition(async () => {
-      show(await setProvisionalPasswordAction(user.id));
+      const result = await setProvisionalPasswordAction(userId);
+      if (result.ok) {
+        passwordAskRef.current?.close();
+        setConfirmPassword(null);
+      }
+      show(result);
     });
   }
 
@@ -201,7 +215,7 @@ export function UsersAdmin({ users, listError, currentUserId }: Props) {
                   type="button"
                   className="btn-secondary"
                   disabled={pending}
-                  onClick={() => onProvisional(user)}
+                  onClick={() => askProvisional(user)}
                 >
                   Contraseña
                 </button>
@@ -320,6 +334,43 @@ export function UsersAdmin({ users, listError, currentUserId }: Props) {
             </button>
           </div>
         </form>
+      </dialog>
+
+      <dialog
+        ref={passwordAskRef}
+        className="pay-dialog"
+        aria-labelledby="user-password-ask-title"
+        onClick={(event) => {
+          if (event.target === passwordAskRef.current) passwordAskRef.current?.close();
+        }}
+      >
+        <div className="pay-dialog-form">
+          <h3 id="user-password-ask-title" className="data-form-title">
+            Contraseña provisional
+          </h3>
+          <p className="data-card-meta">
+            Se genera una contraseña nueva para{" "}
+            {confirmPassword?.full_name || confirmPassword?.email || "este usuario"}. Si cierras,
+            la contraseña actual se queda igual.
+          </p>
+          <div className="module-form-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => passwordAskRef.current?.close()}
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={pending}
+              onClick={onConfirmProvisional}
+            >
+              {pending ? "Generando…" : "Generar"}
+            </button>
+          </div>
+        </div>
       </dialog>
 
       <dialog

@@ -129,25 +129,44 @@ export async function replaceProvisionalPasswordAction(input: {
   return { ok: true, message: "Contraseña actualizada." };
 }
 
+export async function dismissProvisionalPasswordAction(): Promise<ActionResult> {
+  const auth = await requireAuth();
+  if (!auth.profile.must_change_password) {
+    return { ok: true, message: "" };
+  }
+  const cleared = await clearMustChangePassword(auth.user.id);
+  if (!cleared.ok) return cleared;
+  revalidatePath("/");
+  revalidatePath("/cambiar-contrasena");
+  return { ok: true, message: "" };
+}
+
 async function clearMustChangePassword(userId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const own = await supabase
+    .from("profiles")
+    .update({ must_change_password: false, updated_at: new Date().toISOString() })
+    .eq("id", userId)
+    .select("id");
+  if (missingProfileColumn(own.error)) return { ok: true, message: "" };
+  if (!own.error && (own.data?.length ?? 0) > 0) return { ok: true, message: "" };
+
+  const rpc = await supabase.rpc("clear_password_change");
+  if (!rpc.error || missingProfileColumn(rpc.error)) {
+    return { ok: true, message: "" };
+  }
+
   if (hasSupabaseServiceEnv()) {
     const admin = createServiceClient();
     const { error } = await admin
       .from("profiles")
       .update({ must_change_password: false, updated_at: new Date().toISOString() })
       .eq("id", userId);
-    if (error && !missingProfileColumn(error)) {
-      return { ok: false, message: error.message };
-    }
-    return { ok: true, message: "" };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("clear_password_change");
-  if (error && !missingProfileColumn(error)) {
+    if (!error || missingProfileColumn(error)) return { ok: true, message: "" };
     return { ok: false, message: error.message };
   }
-  return { ok: true, message: "" };
+
+  return { ok: false, message: own.error.message };
 }
 
 function passwordError(message: string) {
