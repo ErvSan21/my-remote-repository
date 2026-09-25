@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { missingProfileColumn } from "@/lib/auth/profile-row";
 import { isAppRole } from "@/lib/auth/permissions";
@@ -31,6 +32,9 @@ export type UserActionResult = {
 const MIGRATION_HINT =
   "Para crear, borrar y poner contraseña provisional, pega supabase/migrations/009_admin_users.sql en el SQL Editor de Supabase y ejecútalo.";
 
+const PASSWORD_HASH_HINT =
+  "La contraseña no quedó lista para ingresar. Pega supabase/migrations/010_password_hash.sql en el SQL Editor de Supabase, ejecútalo y vuelve a pulsar Generar.";
+
 const PROFILE_SELECTS = [
   "id, username, full_name, email, role, active, enabled_modules, must_change_password",
   "id, username, full_name, email, role, active",
@@ -47,12 +51,20 @@ function requireSuperadmin() {
 }
 
 function makeProvisionalPassword() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
   let body = "";
-  for (const byte of bytes) body += alphabet[byte % alphabet.length];
+  for (let index = 0; index < 7; index += 1) {
+    body += letters[bytes[index] % letters.length];
+  }
+  body += digits[bytes[7] % digits.length];
   return `Mac-${body}`;
+}
+
+function passwordHash(password: string) {
+  return bcrypt.hashSync(password, 10);
 }
 
 function validEmail(value: string) {
@@ -143,29 +155,6 @@ export async function createUserAction(input: {
 
   const modules = sanitizeModules(input.role, input.modules);
   const password = makeProvisionalPassword();
-  const supabase = await createClient();
-
-  const created = await supabase.rpc("admin_create_user", {
-    p_email: email,
-    p_password: password,
-    p_full_name: name.value,
-    p_role: input.role,
-    p_modules: modules,
-  });
-
-  if (!created.error) {
-    revalidatePath("/usuarios");
-    return {
-      ok: true,
-      message: "Usuario creado. Comparte la contraseña provisional.",
-      password,
-    };
-  }
-
-  if (!missingRpc(created.error)) {
-    return { ok: false, message: dbMessage(created.error) };
-  }
-
   return createWithSignup(email, password, name.value, input.role, modules);
 }
 
@@ -278,11 +267,29 @@ async function applyProvisionalPassword(
   password: string,
 ): Promise<UserActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("admin_set_password", {
+  const profile = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+  const email = profile.data?.email?.trim().toLowerCase() ?? "";
+  if (!email) {
+    return { ok: false, message: "Ese usuario no tiene correo para ingresar." };
+  }
+
+  const { error } = await supabase.rpc("admin_set_password_hash", {
     target: userId,
-    new_password: password,
+    password_hash: passwordHash(password),
   });
-  if (error) return { ok: false, message: dbMessage(error) };
+  if (error) {
+    return {
+      ok: false,
+      message: missingRpc(error) ? PASSWORD_HASH_HINT : dbMessage(error),
+    };
+  }
+
+  const login = await passwordLogsIn(email, password);
+  if (!login.ok) return { ok: false, message: login.message };
 
   revalidatePath("/usuarios");
   return {
@@ -290,6 +297,31 @@ async function applyProvisionalPassword(
     message: "Contraseña provisional lista. El usuario deberá cambiarla al ingresar.",
     password,
   };
+}
+
+async function passwordLogsIn(
+  email: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const url = getSupabaseUrl();
+  const key = getSupabasePublishableKey();
+  if (!url || !key) {
+    return { ok: false, message: "Falta la configuración pública de Supabase." };
+  }
+
+  const anon = createSupabaseClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { error } = await anon.auth.signInWithPassword({ email, password });
+  if (!error) return { ok: true };
+  if (error.message.toLowerCase().includes("email not confirmed")) {
+    return {
+      ok: false,
+      message:
+        "El correo todavía no está confirmado. Ejecuta supabase/migrations/010_password_hash.sql y vuelve a generar la contraseña.",
+    };
+  }
+  return { ok: false, message: PASSWORD_HASH_HINT };
 }
 
 async function createWithSignup(
@@ -317,10 +349,8 @@ async function createWithSignup(
   if (signed.error || !signed.data.user) {
     return { ok: false, message: createUserError(signed.error?.message ?? "") };
   }
-  if (
-    Array.isArray(signed.data.user.identities) &&
-    signed.data.user.identities.length === 0
-  ) {
+  const identities = signed.data.user.identities;
+  if (!Array.isArray(identities) || identities.length === 0) {
     return { ok: false, message: "Ese correo ya tiene una cuenta." };
   }
 
@@ -353,13 +383,17 @@ async function createWithSignup(
     return { ok: false, message: dbMessage(saved.error) };
   }
 
+  if (!signed.data.session) {
+    await supabase.rpc("admin_confirm_email", { target: signed.data.user.id });
+  }
+
+  const login = await passwordLogsIn(email, password);
+  if (!login.ok) return login;
+
   revalidatePath("/usuarios");
-  const needsConfirm = !signed.data.session;
   return {
     ok: true,
-    message: needsConfirm
-      ? "Usuario creado. Si no puede ingresar, ejecuta supabase/migrations/009_admin_users.sql para confirmar el correo."
-      : "Usuario creado. Comparte la contraseña provisional.",
+    message: "Usuario creado. Comparte la contraseña provisional.",
     password,
   };
 }
