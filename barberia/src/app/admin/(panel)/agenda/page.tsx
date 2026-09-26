@@ -42,11 +42,13 @@ export default async function AgendaPage(props: {
 
   return (
     <div className="grid gap-4">
-      <h1 className="font-display text-4xl leading-none">Agenda</h1>
-      <Link href="/admin/agenda/nueva" className={buttonClass}>
-        Agendar manualmente
-      </Link>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <h1 className="font-display text-4xl leading-none md:text-5xl">Agenda</h1>
+        <Link href="/admin/agenda/nueva" className={buttonClass}>
+          Agendar manualmente
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:max-w-md">
         <Link href={query(prev)} className="flex h-12 items-center justify-center border border-ink bg-white text-sm">
           Día anterior
         </Link>
@@ -55,7 +57,7 @@ export default async function AgendaPage(props: {
         </Link>
       </div>
       <p className="text-lg">{formatLong(fecha)}</p>
-      <form className="grid gap-2" action="/admin/agenda">
+      <form className="grid gap-2 md:grid-cols-4" action="/admin/agenda">
         <input className={inputClass} type="date" name="fecha" defaultValue={fecha} />
         {user.rol === "admin" ? (
           <select className={inputClass} name="barbero" defaultValue={barbero}>
@@ -83,7 +85,7 @@ export default async function AgendaPage(props: {
       <ul>
         {appointments.map((appointment) => (
           <li key={appointment.id} className="border-t border-[#d5e0da]">
-            <Link href={`/admin/agenda/${appointment.id}`} className="grid min-h-16 grid-cols-[4.5rem_1fr] gap-2 py-3">
+            <Link href={`/admin/agenda/${appointment.id}`} className="row-link grid min-h-16 grid-cols-[4.5rem_1fr] gap-3 py-3 md:grid-cols-[6rem_1fr] md:px-3">
               <span className="text-lg">{appointment.horaInicio}</span>
               <span>
                 <span className="block">

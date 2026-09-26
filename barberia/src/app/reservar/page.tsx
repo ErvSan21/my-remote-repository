@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BookingWizard } from "@/components/booking-wizard";
 import { prisma } from "@/lib/db";
@@ -23,15 +24,17 @@ export default async function ReservarPage() {
   ]);
 
   return (
-    <main className="min-h-dvh bg-foam text-ink">
-      <header className="bg-ink text-foam">
-        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
-          <Link href="/" className="font-display text-2xl leading-none">
+    <main className="min-h-dvh bg-foam text-ink md:grid md:grid-cols-[minmax(0,0.85fr)_minmax(22rem,1fr)]">
+      <div className="relative h-52 md:sticky md:top-0 md:h-dvh">
+        <Image src="/fotos/corte.png" alt="" fill priority sizes="(min-width: 768px) 45vw, 100vw" className="object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/25 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-4 py-4 text-foam">
+          <Link href="/" className="font-display text-3xl leading-none">
             {settings.shopName}
           </Link>
           <a href={waLink(settings.whatsappNumber, settings.whatsappMessage)}>WhatsApp</a>
         </div>
-      </header>
+      </div>
       <BookingWizard
         services={services}
         barbers={barbers.map((barber) => ({

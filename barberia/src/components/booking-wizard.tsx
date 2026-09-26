@@ -140,7 +140,7 @@ export function BookingWizard({
   const titles = mode === "manual" ? ["Datos del cliente", ...steps.slice(1)] : steps;
 
   return (
-    <div className={mode === "manual" ? "" : "pb-28"}>
+    <div className={mode === "manual" ? "" : "pb-28 md:pb-8"}>
       <div className="h-1 bg-[#d5e0da]" role="progressbar" aria-valuemin={1} aria-valuemax={5} aria-valuenow={step + 1}>
         <div className="h-full bg-brass" style={{ width: `${((step + 1) / 5) * 100}%` }} />
       </div>
@@ -326,7 +326,7 @@ export function BookingWizard({
         className={
           mode === "manual"
             ? "sticky bottom-16 z-10 border-t border-[#d5e0da] bg-foam px-4 py-3"
-            : "fixed inset-x-0 bottom-0 z-10 border-t border-[#d5e0da] bg-foam px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            : "fixed inset-x-0 bottom-0 z-10 border-t border-[#d5e0da] bg-foam px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:sticky md:inset-x-auto"
         }
       >
         <div className="mx-auto grid max-w-lg grid-cols-[auto_1fr] gap-2">
