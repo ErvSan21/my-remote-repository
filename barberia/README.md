@@ -14,7 +14,7 @@ npm run db:setup
 npm run dev
 ```
 
-Abre `http://localhost:3000` en el ancho de un teléfono.
+Abre `http://localhost:4000` en el ancho de un teléfono.
 
 ## Cuentas de demostración
 
