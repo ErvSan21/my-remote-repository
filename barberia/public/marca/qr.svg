@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="QR de pago de demostración">
+  <rect width="240" height="240" fill="#f3f7f4"/>
+  <rect x="28" y="28" width="184" height="184" fill="none" stroke="#10211c" stroke-width="8"/>
+  <rect x="48" y="48" width="48" height="48" fill="#10211c"/>
+  <rect x="144" y="48" width="48" height="48" fill="#10211c"/>
+  <rect x="48" y="144" width="48" height="48" fill="#10211c"/>
+  <rect x="144" y="144" width="20" height="20" fill="#c9893a"/>
+  <rect x="172" y="172" width="20" height="20" fill="#10211c"/>
+  <text x="120" y="128" text-anchor="middle" font-family="Georgia, serif" font-size="22" fill="#10211c">QR de pago</text>
+</svg>

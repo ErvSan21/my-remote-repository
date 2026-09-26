@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420">
+  <rect width="320" height="420" fill="#f7f4ef"/>
+  <rect x="16" y="16" width="288" height="388" fill="none" stroke="#10211c" stroke-width="4"/>
+  <text x="32" y="64" font-family="Georgia, serif" font-size="28" fill="#10211c">Comprobante</text>
+  <text x="32" y="110" font-family="sans-serif" font-size="16" fill="#10211c">Casa Navarro</text>
+  <text x="32" y="140" font-family="sans-serif" font-size="16" fill="#10211c">Bs 35</text>
+  <text x="32" y="180" font-family="sans-serif" font-size="14" fill="#3e564c">Imagen de demostración</text>
+</svg>
