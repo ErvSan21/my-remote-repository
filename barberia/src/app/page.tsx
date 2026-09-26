@@ -27,10 +27,7 @@ export default async function HomePage() {
   return (
     <>
       <main className="mx-auto max-w-lg pb-28">
-        <header className="flex justify-end px-5 pt-5">
-          <a href={whatsapp}>WhatsApp</a>
-        </header>
-        <section className="px-5 pt-6">
+        <section className="px-5 pt-8">
           <h1 className="font-display text-[4.4rem] leading-[0.85] tracking-[-0.03em]">{settings.shopName}</h1>
           <p className="mt-5 max-w-[16rem] text-lg leading-snug text-mist">{settings.tagline}</p>
           {opening ? (
