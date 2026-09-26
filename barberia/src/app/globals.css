@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #10211c;
+  --foam: #f3f7f4;
+  --brass: #c9893a;
+  --signal: #d92b1a;
+  --mist: #b7c9bf;
+  --line: #2c463d;
+  --sheet: #f4f7f5;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-foam: var(--foam);
+  --color-brass: var(--brass);
+  --color-signal: var(--signal);
+  --color-mist: var(--mist);
+  --color-line: var(--line);
+  --color-sheet: var(--sheet);
+  --font-sans: var(--font-outfit);
+  --font-display: var(--font-fraunces);
+}
+
+html {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+body {
+  font-family: var(--font-outfit), sans-serif;
+  background: var(--ink);
+  color: var(--foam);
+}
+
+.font-display {
+  font-family: var(--font-fraunces), serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-in {
+    animation: none;
+  }
+}
+
+.step-in {
+  animation: step-in 180ms ease-out;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
