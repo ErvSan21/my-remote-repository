@@ -166,7 +166,7 @@ async function clearMustChangePassword(userId: string): Promise<ActionResult> {
     return { ok: false, message: error.message };
   }
 
-  return { ok: false, message: own.error.message };
+  return { ok: false, message: own.error?.message ?? "No se pudo actualizar tu perfil." };
 }
 
 function passwordError(message: string) {
