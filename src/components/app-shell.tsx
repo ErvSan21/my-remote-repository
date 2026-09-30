@@ -1,6 +1,7 @@
 import { bottomNavForRole, navForRole } from "@/lib/auth/permissions";
 import { FloatingDock } from "@/components/floating-dock";
 import { ProfileMenu } from "@/components/profile-menu";
+import { RegisterButton } from "@/components/register-button";
 import { SideNavLinks } from "@/components/side-nav-links";
 import type { AppRole } from "@/lib/types";
 import type { ReactNode } from "react";
@@ -15,6 +16,7 @@ type AppShellProps = {
 export function AppShell({ role, email, modules = null, children }: AppShellProps) {
   const nav = navForRole(role, modules);
   const bottomNav = bottomNavForRole(role, modules);
+  const isAdmin = role === "admin" || role === "superadmin";
 
   return (
     <div className="app-shell">
@@ -32,12 +34,13 @@ export function AppShell({ role, email, modules = null, children }: AppShellProp
         <aside className="side-nav" aria-label="Navegación principal">
           <p className="side-nav-label">Menú</p>
           <SideNavLinks items={nav} />
+          <RegisterButton isAdmin={isAdmin} variant="side" />
         </aside>
 
         <main className="app-main">{children}</main>
       </div>
 
-      <FloatingDock items={bottomNav} />
+      <FloatingDock items={bottomNav} isAdmin={isAdmin} />
     </div>
   );
 }

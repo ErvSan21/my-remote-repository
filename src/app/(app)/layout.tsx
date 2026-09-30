@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { getAuthContext } from "@/lib/auth/session";
+import "./dashboard.css";
+import "./parties.css";
+import "./register.css";
 
 export const dynamic = "force-dynamic";
 

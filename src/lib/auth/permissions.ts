@@ -1,6 +1,6 @@
 import { effectiveModules, moduleForPath, type AppModule } from "@/lib/modules";
 import type { AppRole, NavItem } from "@/lib/types";
-import { APP_NAV } from "@/lib/nav";
+import { APP_NAV, PERFIL_NAV } from "@/lib/nav";
 
 export function isAppRole(value: unknown): value is AppRole {
   return value === "vendedora" || value === "admin" || value === "superadmin";
@@ -80,16 +80,11 @@ export function navForRole(
   return items;
 }
 
-/** Dock móvil: Inicio, Ventas, Compras, Clientes, Proveedores. Usuarios va en el menú de perfil. */
+/** Dock móvil: Inicio y Clientes a la izquierda del botón +, Compras y Perfil a la derecha. Usuarios va en el menú de perfil. */
 export function bottomNavForRole(
   role: AppRole,
   enabledModules?: string[] | null,
 ): NavItem[] {
-  const nav = navForRole(role, enabledModules);
-  if (role === "vendedora") return nav.filter((item) => item.href !== "/usuarios");
-
-  const mobileHrefs = ["/", "/ventas", "/compras", "/clientes", "/proveedores"];
-  return mobileHrefs
-    .map((href) => nav.find((item) => item.href === href))
-    .filter((item): item is NavItem => Boolean(item));
+  const nav = navForRole(role, enabledModules).filter((item) => item.href !== "/usuarios");
+  return [...nav, PERFIL_NAV];
 }
