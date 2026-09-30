@@ -194,6 +194,31 @@ export async function updateUserAccessAction(input: {
   return { ok: true, message: "Acceso actualizado." };
 }
 
+/** Cambia el nombre visible de otro usuario (solo super admin). */
+export async function updateUserNameAction(input: {
+  userId: string;
+  fullName: string;
+}): Promise<UserActionResult> {
+  const auth = await requireSuperadmin();
+  if (!auth) return { ok: false, message: "No autorizado." };
+  if (!isUuid(input.userId)) return { ok: false, message: "Usuario inválido." };
+  const name = boundedText(input.fullName, 120);
+  if (!name.ok || !name.value) return { ok: false, message: "Escribe el nombre." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ full_name: name.value, updated_at: new Date().toISOString() })
+    .eq("id", input.userId)
+    .select("id");
+
+  if (error) return { ok: false, message: dbMessage(error) };
+  if (!data?.length) return { ok: false, message: "No se pudo guardar el nombre." };
+
+  revalidatePath("/usuarios");
+  return { ok: true, message: "Nombre actualizado." };
+}
+
 export async function setUserActiveAction(
   userId: string,
   active: boolean,

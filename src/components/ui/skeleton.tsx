@@ -64,30 +64,63 @@ export function DetailSkeleton() {
   );
 }
 
+/** Inicio: saludo, 4 cards, gráfico y saldos. */
 export function DashboardSkeleton() {
   return (
-    <div className="dash-page" aria-busy="true" aria-label="Cargando">
-      <header className="module-hero module-hero-dash">
-        <Skeleton
-          className="skeleton-page-title skeleton-on-navy"
-          style={{ width: "11rem" }}
-        />
+    <div className="dash-page gp" aria-busy="true" aria-label="Cargando">
+      <header className="gp-hello">
+        <div>
+          <Skeleton className="skeleton-line" style={{ width: "9rem" }} />
+          <Skeleton className="skeleton-page-title" style={{ width: "11rem", marginTop: "0.5rem" }} />
+        </div>
       </header>
-      <div className="dash-range">
-        <Skeleton className="skeleton-search" />
-        <Skeleton className="skeleton-search" />
-      </div>
-      <section className="metrics-grid">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="metric">
-            <div className="metric-head">
-              <Skeleton className="skeleton-icon-btn" style={{ width: "1.85rem", height: "1.85rem" }} />
-              <Skeleton className="skeleton-line" />
-            </div>
-            <Skeleton className="skeleton-title" />
+      <section className="gp-kpis">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="gp-kpi">
+            <Skeleton className="skeleton-line" style={{ width: "60%" }} />
+            <Skeleton className="skeleton-title" style={{ height: "1.6rem", width: "75%" }} />
+            <Skeleton className="skeleton-line short" />
           </div>
         ))}
       </section>
+      <div className="gp-main">
+        <div className="gp-card gp-chart">
+          <Skeleton className="skeleton-title" />
+          <Skeleton style={{ height: "150px", width: "100%", borderRadius: "12px" }} />
+        </div>
+        <div className="gp-side">
+          <div className="gp-card">
+            <Skeleton className="skeleton-search" />
+            <Skeleton className="skeleton-line" style={{ marginTop: "0.9rem" }} />
+            <Skeleton className="skeleton-line short" style={{ marginTop: "0.6rem" }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Clientes y Compras: resumen, buscador y cards. */
+export function PartyListSkeleton() {
+  return (
+    <div className="data-stack module-page" aria-busy="true" aria-label="Cargando">
+      <div className="gv">
+        <Skeleton style={{ height: "7rem", width: "100%", borderRadius: "20px" }} />
+        <Skeleton style={{ height: "48px", width: "100%", borderRadius: "12px" }} />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="gv-card">
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <Skeleton style={{ width: "42px", height: "42px", borderRadius: "999px", flexShrink: 0 }} />
+              <div style={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                <Skeleton className="skeleton-title" />
+                <Skeleton className="skeleton-line short" />
+              </div>
+            </div>
+            <Skeleton style={{ height: "8px", width: "100%", borderRadius: "4px" }} />
+            <Skeleton className="skeleton-line" style={{ width: "55%" }} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

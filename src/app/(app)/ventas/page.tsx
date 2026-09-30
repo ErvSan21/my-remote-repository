@@ -1,24 +1,13 @@
-import { requireAuth, isAdminRole } from "@/lib/auth/guards";
-import { listClientsAction } from "@/app/actions/clients";
+import { requireAuth } from "@/lib/auth/guards";
 import { listVentasAction } from "@/app/actions/consignments";
 import { VentasManager } from "@/components/ventas/ventas-manager";
+import { loadPeople } from "@/lib/people";
 
 export const dynamic = "force-dynamic";
 
 export default async function VentasPage() {
-  const auth = await requireAuth();
-  const canCreate = isAdminRole(auth.profile.role);
-  const [ventasRes, clientsRes] = await Promise.all([
-    listVentasAction(),
-    listClientsAction(false),
-  ]);
+  await requireAuth();
+  const [ventasRes, people] = await Promise.all([listVentasAction(), loadPeople()]);
 
-  return (
-    <VentasManager
-      ventas={ventasRes.ventas}
-      clients={clientsRes.clients}
-      listError={ventasRes.error || clientsRes.error}
-      canCreate={canCreate}
-    />
-  );
+  return <VentasManager ventas={ventasRes.ventas} people={people} listError={ventasRes.error} />;
 }

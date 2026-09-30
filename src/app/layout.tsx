@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { galponFontVars } from "@/lib/galpon-fonts";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Gestión Avícola — MAC",
@@ -25,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="es" className={`${galponFontVars} h-full`} suppressHydrationWarning>
       <body className="min-h-full antialiased" suppressHydrationWarning>
         {children}
       </body>

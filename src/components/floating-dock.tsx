@@ -3,60 +3,45 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavIconSvg } from "@/components/nav-icon";
+import { RegisterButton } from "@/components/register-button";
+import { isActiveHref } from "@/lib/nav";
 import type { NavItem } from "@/lib/types";
 
 type Props = {
   items: NavItem[];
+  isAdmin: boolean;
 };
 
-function isActiveHref(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/ventas") {
-    return (
-      pathname === "/ventas" ||
-      (/^\/ventas\//.test(pathname) && !pathname.startsWith("/ventas/clientes"))
-    );
-  }
-  if (href === "/clientes") {
-    return pathname === "/clientes" || pathname.startsWith("/clientes/");
-  }
-  if (href === "/compras") {
-    return pathname === "/compras" || pathname.startsWith("/compras/");
-  }
-  if (href === "/proveedores") {
-    return (
-      pathname === "/proveedores" ||
-      (/^\/proveedores\//.test(pathname) &&
-        !pathname.startsWith("/proveedores/compras"))
-    );
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-export function FloatingDock({ items }: Props) {
+/** Barra inferior: dos accesos, el botón "+" al centro y el resto a la derecha. */
+export function FloatingDock({ items, isAdmin }: Props) {
   const pathname = usePathname() || "/";
+  const half = Math.ceil(items.length / 2);
+
+  const link = (item: NavItem) => {
+    const active = isActiveHref(pathname, item.href);
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={`bottom-nav-link${active ? " is-active" : ""}`}
+        aria-current={active ? "page" : undefined}
+        title={item.label}
+      >
+        <span className="bottom-nav-icon" aria-hidden>
+          {item.icon ? <NavIconSvg name={item.icon} /> : null}
+        </span>
+        <span className="bottom-nav-label">{item.shortLabel ?? item.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <nav className="bottom-nav floating-dock" aria-label="Navegación móvil">
-      {items.map((item) => {
-        const active = isActiveHref(pathname, item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`bottom-nav-link${active ? " is-active" : ""}`}
-            aria-current={active ? "page" : undefined}
-            title={item.label}
-          >
-            <span className="bottom-nav-icon" aria-hidden>
-              {item.icon ? <NavIconSvg name={item.icon} /> : null}
-            </span>
-            <span className="bottom-nav-label">
-              {item.shortLabel ?? item.label}
-            </span>
-          </Link>
-        );
-      })}
+      {items.slice(0, half).map(link)}
+      <div className="bottom-nav-center">
+        <RegisterButton isAdmin={isAdmin} variant="dock" />
+      </div>
+      {items.slice(half).map(link)}
     </nav>
   );
 }

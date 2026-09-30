@@ -5,6 +5,8 @@ import { requireAdmin, requireSuperadmin } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { readSuppliers } from "@/lib/reads";
 import { boundedText, isUuid, parsePhone } from "@/lib/validation";
+import { isDepartamento } from "@/lib/bolivia";
+import { missingColumnError } from "@/lib/db-errors";
 import type { ActionResult, Supplier } from "@/lib/data-types";
 
 function revalidateSuppliers(id?: string) {
@@ -43,6 +45,55 @@ export async function getSupplierAction(id: string): Promise<{
   if (error) return { supplier: null, error: error.message };
   if (!data) return { supplier: null, error: "Proveedor no encontrado." };
   return { supplier: data as Supplier, error: null };
+}
+
+/** Alta de proveedor desde "Registrar": persona, empresa opcional, departamento y celular obligatorio. */
+export async function createSupplierDetailedAction(input: {
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  city: string;
+  phone: string;
+}): Promise<ActionResult> {
+  await requireAdmin();
+  const first = boundedText(input.firstName, 80);
+  const last = boundedText(input.lastName, 80);
+  const company = boundedText(input.companyName, 160);
+  const phone = parsePhone(input.phone);
+  if (!first.ok || !last.ok || !company.ok) return { ok: false, message: "Texto demasiado largo." };
+  if (!first.value) return { ok: false, message: "Escribe el nombre." };
+  if (!isDepartamento(input.city)) return { ok: false, message: "Elige el departamento." };
+  if (!phone.ok) return { ok: false, message: phone.message };
+  if (phone.value.length !== 8) return { ok: false, message: "El celular debe tener 8 números." };
+
+  const person = [first.value, last.value].filter(Boolean).join(" ");
+  // Con empresa, en la app se ve la empresa; si no, la persona.
+  const displayName = company.value || person;
+  const base = { name: displayName, location: input.city, phone: phone.value, active: true };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .insert({ ...base, first_name: first.value, last_name: last.value || null, company_name: company.value || null })
+    .select("id")
+    .single();
+
+  let id = data?.id as string | undefined;
+  if (error) {
+    // Sin la migración 012 guarda lo básico y deja el contacto en las notas.
+    if (!missingColumnError(error)) return { ok: false, message: error.message };
+    const fallback = await supabase
+      .from("suppliers")
+      .insert({ ...base, notes: company.value ? `Contacto: ${person}` : null })
+      .select("id")
+      .single();
+    if (fallback.error || !fallback.data) {
+      return { ok: false, message: fallback.error?.message || "No se creó el proveedor." };
+    }
+    id = fallback.data.id;
+  }
+  if (id) revalidateSuppliers(id);
+  return { ok: true, message: `Proveedor ${displayName} registrado.` };
 }
 
 export async function createSupplierAction(input: {

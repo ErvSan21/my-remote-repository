@@ -3,35 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NavIconSvg } from "@/components/nav-icon";
+import { isActiveHref } from "@/lib/nav";
 import type { NavItem } from "@/lib/types";
 
 type Props = {
   items: NavItem[];
 };
-
-function isActiveHref(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  if (href === "/ventas") {
-    return (
-      pathname === "/ventas" ||
-      (/^\/ventas\//.test(pathname) && !pathname.startsWith("/ventas/clientes"))
-    );
-  }
-  if (href === "/clientes") {
-    return pathname === "/clientes" || pathname.startsWith("/clientes/");
-  }
-  if (href === "/compras") {
-    return pathname === "/compras" || pathname.startsWith("/compras/");
-  }
-  if (href === "/proveedores") {
-    return (
-      pathname === "/proveedores" ||
-      (/^\/proveedores\//.test(pathname) &&
-        !pathname.startsWith("/proveedores/compras"))
-    );
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 export function SideNavLinks({ items }: Props) {
   const pathname = usePathname() || "/";
