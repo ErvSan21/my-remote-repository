@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #10211c;
+  --foam: #f3f7f4;
+  --brass: #c9893a;
+  --signal: #d92b1a;
+  --signal-hot: #c42316;
+  --mist: #b7c9bf;
+  --line: #2c463d;
+  --sheet: #f4f7f5;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-foam: var(--foam);
+  --color-brass: var(--brass);
+  --color-signal: var(--signal);
+  --color-mist: var(--mist);
+  --color-line: var(--line);
+  --color-sheet: var(--sheet);
+  --font-sans: var(--font-outfit);
+  --font-display: var(--font-fraunces);
+}
+
+html {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+body {
+  font-family: var(--font-outfit), sans-serif;
+  background: var(--ink);
+  color: var(--foam);
+}
+
+.font-display {
+  font-family: var(--font-fraunces), serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--brass);
+  color: var(--ink);
+}
+
+.press {
+  transition: transform 140ms var(--ease-out);
+}
+
+.press:active {
+  transform: scale(0.97);
+}
+
+.reserve {
+  transition:
+    background-color 160ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.hero-photo {
+  animation: hero-in 900ms var(--ease-out) both;
+}
+
+.rise {
+  animation: rise 640ms var(--ease-out) both;
+}
+
+.rise-2 {
+  animation-delay: 70ms;
+}
+
+.rise-3 {
+  animation-delay: 140ms;
+}
+
+.step-in {
+  animation: step-in 180ms var(--ease-out) both;
+}
+
+@keyframes hero-in {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reserve:hover {
+    background: var(--signal-hot);
+  }
+
+  .row-link {
+    transition: background-color 150ms ease;
+  }
+
+  .row-link:hover {
+    background: #e7eeea;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-photo,
+  .rise,
+  .step-in,
+  .press,
+  .reserve,
+  .row-link {
+    animation: none;
+    transition: none;
+  }
+
+  .press:active {
+    transform: none;
+  }
+}
